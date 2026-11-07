@@ -1,6 +1,6 @@
 // ===== Dados estáticos: artes, personagens, tabuleiro, cartas =====
 // versão do jogo: mude a cada publicação (avisa quem estiver com a página antiga aberta)
-const APP_VERSION = '2026.11.07-1';
+const APP_VERSION = '2026.11.07-2';
 const IMG = {
   char_vitoria: 'assets/char_vitoria.webp',
   char_otavio: 'assets/char_otavio.webp',
@@ -96,6 +96,7 @@ const GAME_LIBRARY = [
   { id: 'patrimonio', name: 'Patrimônio', desc: 'Compre o Brasil, erga do puxadinho ao hotel e leve os amigos à falência, com leilão, cassino, jornal e fiado.', players: '2–6', cover: IMG.cover_patrimonio, ready: true },
   { id: 'arq', name: 'Arquipélago', desc: 'Colonize uma ilha tropical: produza madeira, argila, algodão, pedra e peixe, negocie com os amigos e erga vilas e cidades até 10 pontos.', players: '2–6', cover: IMG.cover_arq, ready: true },
   { id: 'domino2', name: 'Dominó', desc: 'Dominó brasileiro em duplas: encaixe as pedras, feche a mesa e bata de carroça, lá e lô ou cruzada.', players: '2–4', cover: IMG.cover_domino, ready: true },
+  { id: 'sinuca', name: 'Sinuca', desc: 'Sinuca de bar em 3D: sorteio de par ou ímpar, 1 contra 1 ou em duplas. Cada bola vale os seus pontos e quem encaçapa a última bola do seu lado vence.', players: '2–4', icon: '🎱', ready: true },
   { id: 'ludo', name: 'Ludo', desc: 'Corrida de peões clássica: tire 1 ou 6 para sair, capture os rivais e leve as 4 peças ao centro.', players: '2–6', cover: IMG.cover_ludo, ready: true, icon: '🎯' },
 ];
 

@@ -207,9 +207,11 @@ const UI = (() => {
     $('#scr-game').classList.toggle('domino2', room.game === 'domino2');
     $('#scr-game').classList.toggle('arq', room.game === 'arq');
     $('#scr-game').classList.toggle('patrimonio', room.game === 'patrimonio');
-    if (room.phase === 'lobby') { if ($('.modal .result')) closeModal(); queue = []; boardBuilt = null; resultShown = null; ConjuraUI.reset(); CahUI.reset(); WarUI.reset(); Domino2UI.reset(); ArqUI.reset(); PatUI.reset(); renderRoom(room); }
-    else if (room.game === 'patrimonio') { Board3D.show(false); ConjuraUI.reset(); CahUI.reset(); WarUI.reset(); Domino2UI.reset(); ArqUI.reset(); PatUI.render(room); }
+    $('#scr-game').classList.toggle('sinuca', room.game === 'sinuca');
+    if (room.phase === 'lobby') { if ($('.modal .result')) closeModal(); queue = []; boardBuilt = null; resultShown = null; ConjuraUI.reset(); CahUI.reset(); WarUI.reset(); Domino2UI.reset(); ArqUI.reset(); PatUI.reset(); SinucaUI.reset(); renderRoom(room); }
+    else if (room.game === 'patrimonio') { Board3D.show(false); ConjuraUI.reset(); CahUI.reset(); WarUI.reset(); Domino2UI.reset(); ArqUI.reset(); SinucaUI.reset(); PatUI.render(room); }
     else if (room.game === 'arq') { Board3D.show(false); ConjuraUI.reset(); CahUI.reset(); WarUI.reset(); Domino2UI.reset(); ArqUI.render(room); }
+    else if (room.game === 'sinuca') { Board3D.show(false); ConjuraUI.reset(); CahUI.reset(); WarUI.reset(); Domino2UI.reset(); ArqUI.reset(); PatUI.reset(); SinucaUI.render(room); }
     else if (room.game === 'domino2') { Board3D.show(false); ArqUI.reset(); ConjuraUI.reset(); CahUI.reset(); WarUI.reset(); Domino2UI.render(room); }
     else if (room.game === 'ludo') { Board3D.show(false); ConjuraUI.reset(); CahUI.reset(); WarUI.reset(); ArqUI.reset(); LudoUI.render(room); }
     else if (room.game === 'conjura') { Board3D.show(false); CahUI.reset(); WarUI.reset(); ArqUI.reset(); ConjuraUI.render(room); }
@@ -245,7 +247,7 @@ const UI = (() => {
     show('scr-room');
     const host = Room.isHost, mine = room.players.find(p => p.id === Room.myId);
     const allReady = room.players.length >= 2 && room.players.every(p => p.ready);
-    const gName = GAME_LIBRARY.find(g => g.id === room.game)?.name || 'Magnata', maxP = room.game === 'patrimonio' || room.game === 'arq' ? 6 : room.game === 'domino2' ? Domino2.maxSeats(room.settings.d9) : room.game === 'ludo' ? (room.settings.seats || 4) : room.game === 'conjura' ? 10 : room.game === 'cah' ? 12 : room.game === 'war' ? 6 : 8;
+    const gName = GAME_LIBRARY.find(g => g.id === room.game)?.name || 'Magnata', maxP = room.game === 'sinuca' ? 4 : room.game === 'patrimonio' || room.game === 'arq' ? 6 : room.game === 'domino2' ? Domino2.maxSeats(room.settings.d9) : room.game === 'ludo' ? (room.settings.seats || 4) : room.game === 'conjura' ? 10 : room.game === 'cah' ? 12 : room.game === 'war' ? 6 : 8;
     const root = $('#scr-room');
     const freeSlot = i => `<button class="seat empty free" data-seat="${i}" style="--sc:${Ludo.SEATS[i].color}" ${mine ? '' : 'disabled'}><i class="seatchip"></i><b>${Ludo.SEATS[i].name}</b><small>${mine ? 'Vaga livre<br>clique para ficar com esta cor' : 'Vaga livre'}</small></button>`;
     const focused = document.activeElement?.closest('.chat-form') ? $('.chat-form input', root)?.value : null;
@@ -255,8 +257,8 @@ const UI = (() => {
       <div class="room-grid">
         <div class="card">
           <h3>Jogadores (${room.players.length}/${maxP})</h3>
-          <div class="seats ${room.game === 'ludo' ? 'ludo' + maxP : ''}">${(room.game === 'ludo' ? [...Array(maxP).keys()].map(i => room.players.find(p => p.seat === i) ?? i) : room.players).map(p => typeof p === 'number' ? freeSlot(p) : `
-            <div class="seat ${p.ready ? 'ready' : ''}" ${room.game === 'ludo' && p.seat != null ? `style="--sc:${Ludo.SEATS[p.seat].color}"` : room.game === 'war' && p.seat != null ? `style="--sc:${War.COLORS[p.seat].hex}"` : room.game === 'arq' && p.seat != null ? `style="--sc:${Arq.COLORS[p.seat].hex}"` : room.game === 'patrimonio' && p.seat != null ? `style="--sc:${Patrimonio.COLORS[p.seat].hex}"` : ''}>${(room.game === 'ludo' || room.game === 'war' || room.game === 'arq' || room.game === 'patrimonio') && p.seat != null ? `<i class="seatchip" title="${room.game === 'war' ? War.COLORS[p.seat].name : room.game === 'arq' ? Arq.COLORS[p.seat].name : Ludo.SEATS[p.seat].name}"></i>` : ''}${room.game === 'war' && generalById(p.general) ? `<img class="gen-face" src="${generalById(p.general).thumb}" alt="">` : avatar(p, 84)}<b>${esc(p.name)}${room.game === 'ludo' && p.hat && p.hat !== 'none' ? ' ' + LUDO_HATS.find(h => h.id === p.hat)?.icon : ''}</b><small>${room.game === 'ludo' && p.seat != null ? `<em class="seatname">${Ludo.SEATS[p.seat].name}</em>` : room.game === 'war' ? `<em class="seatname war-seatname">${p.seat != null ? 'Exército ' + War.COLORS[p.seat].name.toLowerCase() : ''}${generalById(p.general) ? ' · ' + esc(generalById(p.general).name) : ''}</em>` : esc(p.title)}</small>${p.relay ? '<span class="net-tag" title="Conectado pelo servidor de reserva">🛰️ reserva</span>' : ''}
+          <div class="seats ${room.game === 'ludo' ? 'ludo' + maxP : ''}">${(room.game === 'ludo' ? [...Array(maxP).keys()].map(i => room.players.find(p => p.seat === i) ?? i) : room.players).map((p, pi) => typeof p === 'number' ? freeSlot(p) : `
+            <div class="seat ${p.ready ? 'ready' : ''}" ${room.game === 'ludo' && p.seat != null ? `style="--sc:${Ludo.SEATS[p.seat].color}"` : room.game === 'war' && p.seat != null ? `style="--sc:${War.COLORS[p.seat].hex}"` : room.game === 'arq' && p.seat != null ? `style="--sc:${Arq.COLORS[p.seat].hex}"` : room.game === 'patrimonio' && p.seat != null ? `style="--sc:${Patrimonio.COLORS[p.seat].hex}"` : ''}>${(room.game === 'ludo' || room.game === 'war' || room.game === 'arq' || room.game === 'patrimonio') && p.seat != null ? `<i class="seatchip" title="${room.game === 'war' ? War.COLORS[p.seat].name : room.game === 'arq' ? Arq.COLORS[p.seat].name : Ludo.SEATS[p.seat].name}"></i>` : ''}${room.game === 'war' && generalById(p.general) ? `<img class="gen-face" src="${generalById(p.general).thumb}" alt="">` : avatar(p, 84)}<b>${esc(p.name)}${room.game === 'ludo' && p.hat && p.hat !== 'none' ? ' ' + LUDO_HATS.find(h => h.id === p.hat)?.icon : ''}</b><small>${room.game === 'ludo' && p.seat != null ? `<em class="seatname">${Ludo.SEATS[p.seat].name}</em>` : room.game === 'war' ? `<em class="seatname war-seatname">${p.seat != null ? 'Exército ' + War.COLORS[p.seat].name.toLowerCase() : ''}${generalById(p.general) ? ' · ' + esc(generalById(p.general).name) : ''}</em>` : room.game === 'sinuca' && room.players.length > 2 ? `<em class="seatname" style="--sc:${['#2f7de1', '#e0453a'][pi % 2]}">Dupla ${pi % 2 + 1}</em>` : esc(p.title)}</small>${p.relay ? '<span class="net-tag" title="Conectado pelo servidor de reserva">🛰️ reserva</span>' : ''}
               <span class="badge ${p.ready ? 'ok' : ''}">${p.id === room.hostId ? '👑 Anfitrião' : p.bot ? '🤖 Bot' : p.ready ? 'Pronto' : 'Aguardando'}</span>
               ${host && p.id !== room.hostId ? `<button class="kick" data-kick="${esc(p.id)}" title="Remover">✕</button>` : ''}</div>`).join('')}
             ${room.game === 'ludo' ? '' : Array.from({ length: Math.max(0, 2 - room.players.length) }, () => '<div class="seat empty">Aguardando jogador…</div>').join('')}
@@ -306,7 +308,14 @@ const UI = (() => {
             ${D2.DAY.includes(ar) ? `<label class="chk"><input type="checkbox" id="set-dia" ${room.settings.dia ? 'checked' : ''} ${host ? '' : 'disabled'}> ☀️ De dia (desmarcado: de noite)</label>` : ''}
             <label>Suas pedras (só na sua tela)<select id="set-pedra">${D2.PEDRAS.map(([k, t, n]) => `<option value="${k}" ${pd === k && w >= n ? 'selected' : ''} ${w >= n ? '' : 'disabled'}>${t}${w >= n ? '' : ` 🔒 ${n} vitória${n > 1 ? 's' : ''}`}</option>`).join('')}</select></label>
             <label class="chk"><input type="checkbox" id="set-leve" ${(() => { try { return localStorage.getItem('d2-leve') === '1'; } catch { return false; } })() ? 'checked' : ''}> 🪶 Modo leve neste aparelho (só a mesa de feltro, sem cenário)</label>`; })() : ''}
-          ${['ludo', 'conjura', 'cah', 'war', 'domino2', 'arq', 'patrimonio'].includes(room.game) ? '' : `<label>Dinheiro inicial<select id="set-money" ${host ? '' : 'disabled'}>${ECON.START_OPTIONS.map(v => `<option value="${v}" ${room.settings.startMoney === v ? 'selected' : ''}>${M(v)}</option>`).join('')}</select></label>
+          ${room.game === 'sinuca' ? `<label>Modo<select id="set-snmode" ${host ? '' : 'disabled'}>${[['parimpar', 'Par ou ímpar (sinuca de bar)'], ['bola8', 'Bola 8 (lisas × listradas)']].map(([v, l]) => `<option value="${v}" ${(room.settings.snMode || 'parimpar') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+            ${(room.settings.snMode || 'parimpar') === 'parimpar' ? `<label class="chk"><input type="checkbox" id="set-snfinal" ${room.settings.snFinal15 ? 'checked' : ''} ${host ? '' : 'disabled'}> 🎱 A 15 decide: depois das suas, tem que encaçapar a 15 (desmarcado: a última bola do seu lado vence)</label>` : ''}
+            <label>Pano da mesa<select id="set-snpano" ${host ? '' : 'disabled'}>${[['verde', '🟩 Verde'], ['azul', '🟦 Azul'], ['vinho', '🟥 Vinho']].map(([v, l]) => `<option value="${v}" ${(room.settings.snPano || 'verde') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+            <label>Ambiente<select id="set-snarena" ${host ? '' : 'disabled'}>${[['bar', '🍺 Bar de sinuca'], ['boteco', '🏘️ Boteco na favela (ao ar livre)'], ['luxo', '🥂 Bar de luxo'], ['quintal', '🌳 Quintal de casa']].map(([v, l]) => `<option value="${v}" ${(room.settings.snArena || 'bar') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+            <label>Tempo por tacada<select id="set-snturn" ${host ? '' : 'disabled'}>${[[20, '20 segundos'], [30, '30 segundos'], [45, '45 segundos (padrão)']].map(([v, l]) => `<option value="${v}" ${(room.settings.snTurn || 45) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+            <label class="chk"><input type="checkbox" id="set-sngast" ${room.settings.snGastacao ? 'checked' : ''} ${host ? '' : 'disabled'}> 😈 Gastação: o que for jogado na mesa (garrafa, copo, sapato…) empurra as bolas e fica 15 s atrapalhando (desmarcado: só pela graça)</label>
+            <p class="muted small">🎲 No começo a mesa sorteia quem fica com as ímpares ou as pares e quem abre. Com 4 jogadores é em duplas: 1º e 3º contra 2º e 4º.</p>` : ''}
+          ${['ludo', 'conjura', 'cah', 'war', 'domino2', 'arq', 'patrimonio', 'sinuca'].includes(room.game) ? '' : `<label>Dinheiro inicial<select id="set-money" ${host ? '' : 'disabled'}>${ECON.START_OPTIONS.map(v => `<option value="${v}" ${room.settings.startMoney === v ? 'selected' : ''}>${M(v)}</option>`).join('')}</select></label>
           <label>Limite de rodadas<select id="set-rounds" ${host ? '' : 'disabled'}>${[[20, '20 rodadas (rápida)'], [30, '30 rodadas (padrão)'], [45, '45 rodadas (longa)'], [0, 'Sem limite (até a falência)']].map(([v, l]) => `<option value="${v}" ${room.settings.maxRounds === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
           <label>Tempo por vez<select id="set-turn" ${host ? '' : 'disabled'}>${[[60, '1 minuto'], [90, '1 min 30 s (padrão)'], [120, '2 minutos'], [180, '3 minutos'], [0, 'Sem limite']].map(([v, l]) => `<option value="${v}" ${(room.settings.turnSec ?? 90) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`}
           ${host ? `<button class="btn" id="add-bot" ${room.players.length >= maxP ? 'disabled' : ''}>🤖 Adicionar bot</button>
@@ -358,6 +367,13 @@ const UI = (() => {
       } else if (room.game === 'arq') {
         $('#set-arqmap').onchange = e => Room.send({ t: 'settings', settings: { mapMode: e.target.value } });
         $('#set-arqturn').onchange = e => Room.send({ t: 'settings', settings: { arqTurnSec: +e.target.value } });
+      } else if (room.game === 'sinuca') {
+        $('#set-snmode').onchange = e => Room.send({ t: 'settings', settings: { snMode: e.target.value } });
+        $('#set-snfinal') && ($('#set-snfinal').onchange = e => Room.send({ t: 'settings', settings: { snFinal15: e.target.checked } }));
+        $('#set-snpano').onchange = e => Room.send({ t: 'settings', settings: { snPano: e.target.value } });
+        $('#set-snturn').onchange = e => Room.send({ t: 'settings', settings: { snTurn: +e.target.value } });
+        $('#set-snarena').onchange = e => Room.send({ t: 'settings', settings: { snArena: e.target.value } });
+        $('#set-sngast').onchange = e => Room.send({ t: 'settings', settings: { snGastacao: e.target.checked } });
       } else if (room.game === 'war') {
         $('#set-turn').onchange = e => Room.send({ t: 'settings', settings: { turnSec: +e.target.value } });
       } else if (room.game === 'conjura') {
@@ -408,7 +424,7 @@ const UI = (() => {
         // o 3D pode terminar de carregar depois que o jogador saiu do Magnata e abriu outro jogo:
         // só liga o tabuleiro se ainda estiver na mesma sala do Magnata
         const r = Room.room;
-        if (!view3d || !r || r.code !== code || r.phase !== 'game' || ['ludo', 'conjura', 'cah', 'war', 'domino2', 'arq'].includes(r.game)) return;
+        if (!view3d || !r || r.code !== code || r.phase !== 'game' || ['ludo', 'conjura', 'cah', 'war', 'domino2', 'arq', 'sinuca'].includes(r.game)) return;
         if (!Board3D.active) Board3D.setAzimuth(viewRot);
         Board3D.show(true); if (r.state) sync3d(r, r.state);
       });
@@ -1107,7 +1123,7 @@ const UI = (() => {
 
   // usados pelo Ludo (js/ludo.js)
   function recordResult(st, room) { Store.recordGame(st.gameId, st.result, room.players, me); me = Store.profileOf(me.username) || me; }
-  const leaveToHub = () => { $('#watch-pill')?.remove(); Room.leave(); boardBuilt = null; ConjuraUI.reset(); CahUI.reset(); WarUI.reset(); Domino2UI.reset(); ArqUI.reset(); PatUI.reset(); enterHub('games'); };
+  const leaveToHub = () => { $('#watch-pill')?.remove(); Room.leave(); boardBuilt = null; ConjuraUI.reset(); CahUI.reset(); WarUI.reset(); Domino2UI.reset(); ArqUI.reset(); PatUI.reset(); SinucaUI.reset(); enterHub('games'); };
   return { init, toast, show, modal, closeModal, avatar, chatHTML, bindChat, recordResult, leaveToHub, flipBtnHTML, bindFlip, matchClock, confirmLeave, spectating };
 })();
 
