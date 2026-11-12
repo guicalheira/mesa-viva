@@ -10,7 +10,8 @@ function table(hands, topCard, opts = {}) {
   const st = U.newGame(room(hands.length, 0, opts.settings));
   const used = new Set([topCard, ...hands.flat()]);
   st.players.forEach((p, i) => { p.hand = [...hands[i]]; });
-  st.pile = [topCard]; st.deck = [...CARDS.keys()].filter(id => !used.has(id));
+  st.pile = [topCard]; st.deck = U.deckIds(st.rules).filter(id => !used.has(id));
+  st.slap = null;
   Object.assign(st, { color: CARDS[topCard].c, turn: 0, dir: 1, pending: 0, pendKind: null, phase: 'play', drawn: null, exposed: null }, opts.st);
   return st;
 }
@@ -18,9 +19,10 @@ const R5 = find('r', '5'), R7 = find('r', '7'), B5 = find('b', '5'), B2 = find('
 const RSKIP = find('r', 'skip'), RREV = find('r', 'rev'), RD2 = find('r', 'd2'), BD2 = find('b', 'd2'), W = find('w', 'wild'), W4 = find('w', 'd4');
 
 // baralho: 108 cartas, 25 por cor e 8 coringas
-assert.strictEqual(CARDS.length, 108);
+assert.strictEqual(CARDS.length, 116);
 for (const c of U.COLORS) assert.strictEqual(CARDS.filter(k => k.c === c).length, 25);
-assert.strictEqual(CARDS.filter(k => k.c === 'w').length, 8);
+assert.strictEqual(CARDS.filter(k => k.c === 'w').length, 16);
+assert.strictEqual(U.deckIds(U.RULES).length, 108);
 
 // começo: 7 cartas cada, carta de cima é número, nenhuma carta some
 for (let n = 2; n <= 10; n++) {
@@ -73,9 +75,11 @@ for (let n = 2; n <= 10; n++) {
   assert.match(U.act(st, 'p1', { type: 'play', card: B2 }), /Devolva/);
   U.act(st, 'p1', { type: 'play', card: BD2 });
   assert.strictEqual(st.players[2].hand.length, 6); assert.strictEqual(st.pending, 0); assert.strictEqual(st.turn, 0); }
-// +4 em cima de +2 vale; +2 em cima de +4 não; quem tem como devolver pode preferir comprar
+// +2 e +4 se acumulam em qualquer ordem; quem tem como devolver pode preferir comprar
 { const st = table([[W4, G9], [BD2, Y1], [B5, Y1 + 1]], R5);
-  U.act(st, 'p0', { type: 'play', card: W4, color: 'b' }); assert.strictEqual(st.turn, 2); assert.strictEqual(st.players[1].hand.length, 6); }
+  U.act(st, 'p0', { type: 'play', card: W4, color: 'b' }); assert.strictEqual(st.turn, 1); assert.strictEqual(st.pending, 4);
+  assert.strictEqual(U.act(st, 'p1', { type: 'play', card: BD2 }), null);
+  assert.strictEqual(st.players[2].hand.length, 8); assert.strictEqual(st.pending, 0); }
 { const st = table([[RD2, G9], [W4, Y1], [B5, Y1 + 1]], R5);
   U.act(st, 'p0', { type: 'play', card: RD2 }); assert.strictEqual(st.turn, 1);
   assert.strictEqual(U.act(st, 'p1', { type: 'draw' }), null); assert.strictEqual(st.players[1].hand.length, 4); assert.strictEqual(st.turn, 2); }

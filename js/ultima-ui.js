@@ -4,8 +4,9 @@ const UltUI = (() => {
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const $ = s => document.querySelector(s);
   let frame = null, ready = false, recorded = null;
+  const EMBEDDED = null; // tools/build.py inclui a mesa atual no arquivo distribuível.
   const abs = u => new URL(u, location.href).href;
-  // no arquivo único (dist) não há pasta ao lado: o jogo vem do site
+  // Caminho para a mesa em arquivos separados; no dist, usa a mesa embutida.
   const src = () => `${document.querySelector('script[src*="js/room.js"]') ? '' : 'https://guicalheira.github.io/mesa-viva/'}prototipos/ultima/index.html?v=${APP_VERSION}`;
 
   function post(room) {
@@ -19,7 +20,7 @@ const UltUI = (() => {
   }
   function render(room) {
     UI.show('scr-game');
-    if (!frame) { frame = document.createElement('iframe'); frame.id = 'ult-frame'; frame.title = 'Última!'; frame.allow = 'autoplay'; frame.src = src(); $('#scr-game').append(frame); }
+    if (!frame) { frame = document.createElement('iframe'); frame.id = 'ult-frame'; frame.title = 'Última!'; frame.allow = 'autoplay'; if (EMBEDDED) frame.srcdoc = EMBEDDED; else frame.src = src(); $('#scr-game').append(frame); }
     const st = room.state;
     if (st?.result && recorded !== st.gameId) { recorded = st.gameId; UI.recordResult(st, room); }
     post(room);
@@ -40,7 +41,7 @@ const UltUI = (() => {
   function lobbyRules(room, host) {
     const rules = { ...Ultima.RULES, ...room.settings.ulRules }, off = host ? '' : 'disabled';
     return `<label>Tempo por vez<select id="ul-turn" ${off}>${[[15, '15 segundos'], [20, '20 segundos'], [30, '30 segundos (padrão)'], [45, '45 segundos'], [0, 'Sem limite']].map(([v, l]) => `<option value="${v}" ${(room.settings.ulTurn ?? 30) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-      ${Ultima.RULE_LIST.map(([k, t, d]) => `<label class="chk" title="${esc(d)}"><input type="checkbox" data-ulrule="${k}" ${rules[k] ? 'checked' : ''} ${off}> ${esc(t)}</label>`).join('')}`;
+      <div class="ul-rules">${Ultima.RULE_LIST.map(([k, t, d]) => `<label class="chk ul-rule"><input type="checkbox" data-ulrule="${k}" ${rules[k] ? 'checked' : ''} ${off}><span><b>${esc(t)}</b><small>${esc(d)}</small></span></label>`).join('')}</div>`;
   }
   function bindLobby(room, root) {
     $('#ul-turn').onchange = e => Room.send({ t: 'settings', settings: { ulTurn: +e.target.value } });

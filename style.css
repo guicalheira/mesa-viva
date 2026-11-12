@@ -1601,3 +1601,10 @@ body:has(#scr-game.war.active) #toasts { bottom: var(--war-toast-b, 104px); }
 .pat-rules-box[open] summary::after { transform: translateY(2px) rotate(-135deg); }
 .pat-rules { display: grid; gap: 4px; padding: 4px 12px 8px; border-top: 2px solid var(--ink); }
 .pat-rules .chk { font-size: .9rem; }
+
+/* Última: regras opcionais legíveis também no toque. */
+.ul-rules { display: grid; gap: 8px; grid-column: 1 / -1; }
+.ul-rules .ul-rule { display: flex; align-items: flex-start; gap: 10px; padding: 10px; border: 1px solid var(--border, #ffffff22); border-radius: 10px; }
+.ul-rule input { flex: none; margin-top: 3px; }
+.ul-rule span { display: grid; gap: 3px; }
+.ul-rule small { font-weight: 400; opacity: .75; line-height: 1.4; }

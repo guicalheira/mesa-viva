@@ -30,6 +30,21 @@
     <button id="b-keep" class="act soft" hidden>Passar a vez</button>
     <button id="b-draw" class="act soft" hidden>Comprar</button>
   </div>
+  <div id="hand-tools">
+    <button id="b-sequence" class="act soft" hidden>Jogar sequência</button>
+    <button id="b-order" class="act soft" hidden>Organizar</button>
+  </div>
+  <div id="hand-editor" class="choice-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="hand-title">
+    <div class="choice-card">
+      <h2 id="hand-title"></h2><p id="hand-help"></p>
+      <div id="hand-cards"></div>
+      <div class="choice-actions"><button id="hand-left" class="act soft" aria-label="Mover carta para a esquerda">←</button><button id="hand-right" class="act soft" aria-label="Mover carta para a direita">→</button><button id="hand-sort" class="act soft">Por cor e número</button></div>
+      <label id="sequence-call"><input type="checkbox" id="sequence-say"> Dizer Última! ao ficar com uma carta</label>
+      <div class="choice-actions"><button id="hand-submit" class="act soft">Jogar sequência</button><button id="hand-close" class="act soft">Fechar</button></div>
+    </div>
+  </div>
+  <div id="swap-picker" class="choice-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="swap-title"><div class="choice-card"><h2 id="swap-title">Trocar a mão com quem?</h2><p>Você entrega todas as suas cartas e recebe todas as cartas da pessoa escolhida.</p><div id="swap-targets"></div><button id="swap-cancel" class="act soft">Cancelar</button></div></div>
+  <div id="slap-zone" hidden role="status" aria-live="polite"><small id="slap-info"></small><button id="b-slap" aria-label="Bater a mão">✋<strong>Bate a mão!</strong></button><span id="slap-count"></span></div>
   <div id="fx"></div>
   <div id="picker" hidden>
     <div class="petals">

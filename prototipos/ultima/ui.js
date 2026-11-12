@@ -30,7 +30,7 @@
     buildPlates();
     if (ME >= 0) { me.hidden = false; me.dataset.i = ME; me.style.setProperty('--pc', st.players[ME].color); me.innerHTML = badgeHTML(ME); } else me.hidden = true;
   }
-  const CN = { r: 'coral', y: 'sol', g: 'folha', b: 'céu', w: '' }, VN = { skip: 'Pula', rev: 'Volta', d2: '+2', wild: 'Coringa', d4: '+4' };
+  const CN = { r: 'coral', y: 'sol', g: 'folha', b: 'céu', w: 'coringa' }, VN = { skip: 'Pula', rev: 'Volta', d2: '+2', wild: 'Coringa', d4: '+4', swap: 'Troca de mão', x2: '×2', x3: '×3' };
   const cardTxt = (id, col) => { const c = C[id]; return `<i style="--c:${HEX[col || c.c] || '#888'}"></i>${VN[c.v] || c.v} ${c.c === 'w' ? (col ? '(' + CN[col] + ')' : '') : CN[c.c]}`; };
   function log(html) { const b = $('#log'); if (!b) return; const d = document.createElement('div'); d.innerHTML = html; b.append(d); while (b.children.length > 80) b.firstChild.remove(); b.scrollTop = 1e6; }
   const who = i => `<b>${esc(nameOf(i))}</b>`;
@@ -70,9 +70,10 @@
       const cnt = el.querySelector('.cnt'); if (cnt) { const n = vm.counts[i]; if (cnt.textContent !== String(n)) { cnt.textContent = n; cnt.classList.add('bump'); setTimeout(() => cnt.classList.remove('bump'), 220); } cnt.classList.toggle('one', n === 1); }
     });
     // texto do topo
-    const mine = !over && st.turn === ME && vm.turn === ME; // a vez já chegou na tela (não espera os efeitos acabarem)
+    const mine = !over && !st.slap && st.turn === ME && vm.turn === ME; // a vez já chegou na tela (não espera os efeitos acabarem)
     let txt;
     if (over) txt = st.winner === ME ? 'Você bateu!' : `${nameOf(st.winner)} bateu!`;
+    else if (st.slap) txt = 'Atenção ao 9: bate a mão!';
     else if (mine) txt = st.phase === 'drawn' ? 'Jogue a que comprou ou passe' : st.pending ? `Devolva ou compre ${st.pending}` : 'Sua vez!';
     else txt = vm.turn === ME ? 'Sua vez!' : vm.turn >= 0 ? `Vez de ${nameOf(vm.turn)}` : 'Embaralhando…';
     $('#st-text').textContent = txt; $('#status').classList.toggle('mine', mine);
@@ -83,7 +84,7 @@
     const me = st.players[ME], playable = new Set(mine && me ? me.hand.filter(id => Ultima.canPlay(st, id)) : []);
     Stage.setHandState({ myTurn: mine, playable, drawn: mine && st.phase === 'drawn' ? st.drawn : null, sending });
     // botões
-    const playing = ME >= 0 && !over;
+    const playing = ME >= 0 && !over && !st.slap;
     const bd = $('#b-draw'); bd.hidden = !(mine && st.phase === 'play'); bd.innerHTML = `<i class="fan"><i></i><i></i><i></i></i>Comprar${st.pending ? `<em>+${st.pending}</em>` : ''}`; bd.classList.toggle('hint', !bd.hidden && !playable.size); // nada serve: o botão chama
     $('#b-keep').hidden = !(mine && st.phase === 'drawn');
     const exposedMe = st.exposed?.p === ME, canCall = playing && me && !me.said && ((mine && me.hand.length === 2) || exposedMe);
@@ -92,6 +93,9 @@
     const bc = $('#b-catch'); bc.hidden = !canCatch;
     if (canCatch && bc.dataset.p !== String(x.p)) { bc.dataset.p = x.p; bc.style.setProperty('--pc', st.players[x.p].color); bc.innerHTML = `${avatar(x.p)} Pegou ${esc(st.players[x.p].name.split(' ')[0])}!`; }
     if (!canCatch) bc.dataset.p = '';
+    $('#b-order').hidden = !(playing && st.rules.manualOrder && idle);
+    $('#b-sequence').hidden = !(mine && st.phase === 'play' && !st.pending && st.rules.sequence && idle);
+    paintSlap();
     paintPlates(); placeSeats();
   }
 
@@ -100,6 +104,7 @@
   function clockLoop() {
     requestAnimationFrame(clockLoop);
     if (!st || !vm) return;
+    paintSlap();
     const left = st.deadline ? st.deadline - nowHost() : 0, total = (st.turnSec || 30) * 1000;
     document.querySelectorAll('.seat').forEach(el => {
       const fg = el.querySelector('.fg'); if (!fg) return;
@@ -163,11 +168,12 @@
         vm.color = e.color; paint();
         if (c.c === 'w') { Sound.play('wild', e.color); ripple(Stage.pilePoint(), HEX[e.color]); }
         if (c.v === 'd2' || c.v === 'd4') { Sound.play('plus', c.v === 'd4' ? 4 : 2); burst(`${c.v === 'd4' ? '+4' : '+2'}<small>compra!</small>`, Stage.pilePoint(), 'plus big', HEX[e.color]); await W(260); }
+        if (c.v === 'x2' || c.v === 'x3') { Sound.play('plus', +c.v[1]); burst(`${VN[c.v]}<small>multiplicou!</small>`, Stage.pilePoint(), 'plus big', HEX[e.color]); await W(260); }
         break;
       }
       case 'draw': {
         const n = e.cards.length; if (!n) break;
-        if (e.why === 'caught' || e.why === 'stack' || e.why === 'd2' || e.why === 'd4') burst(`+${n}`, pointOf(e.p), 'plus');
+        if (['caught', 'stack', 'd2', 'd4', 'slap9'].includes(e.why)) burst(`+${n}`, pointOf(e.p), 'plus');
         vm.counts[e.p] += n; paint(); log(`${who(e.p)} comprou ${n} carta${n > 1 ? 's' : ''}`);
         await Stage.draw(e.p, e.cards);
         break;
@@ -179,6 +185,10 @@
       case 'keep': log(`${who(e.p)} passou`); burst('passou', pointOf(e.p), 'sm'); await W(200); break;
       case 'shuffle': toast('Monte acabou: embaralhando o descarte'); await Stage.reshuffle(e.count); break;
       case 'turn': vm.turn = e.p; Stage.setTurn(e.p, st.players[e.p]?.color); if (e.p === ME && !queue.some(q => q.t === 'turn')) Sound.play('turn'); paint(); await W(90); break;
+      case 'swap': vm.counts = [...e.counts]; log(`${who(e.p)} trocou a mão com ${who(e.target)}`); Sound.play('wild', st.color); paint(); break;
+      case 'slapStart': log(`<b>Bate a mão!</b> O último compra ${e.penalty}`); Sound.play('call'); break;
+      case 'slapHit': log(`${who(e.p)} bateu a mão`); break;
+      case 'slapEnd': log(`${e.losers.map(who).join(', ')} ficou por último: +${e.penalty}`); Sound.play('slam'); e.losers.forEach(shake); break;
       case 'win': {
         log(`${who(e.p)} bateu!`); vm.turn = -1; Stage.setTurn(-1); paint();
         const mine = e.p === ME, pc = st.players[e.p].color;
@@ -208,26 +218,38 @@
   function trySend(id, color) {
     Stage.dragHold(); sending = id; Sound.play('select'); paint();
     clearTimeout(sendTimer); sendTimer = setTimeout(() => { sending = null; if (!Stage.dragging) Stage.dragCancel('hand'); paint(); }, 2500); // a jogada não voltou (erro ou rede)
-    act({ type: 'play', card: id, ...(color ? { color } : {}) });
+    act({ type: 'play', card: id, ...(color ? { color } : {}), ...(swapTarget ? { target: swapTarget } : {}) });
+    swapTarget = null;
   }
-  let pickFor = null;
+  let pickFor = null, swapTarget = null;
   function tryPlay(id) {
     if (sending !== null) return Stage.dragCancel('hand');
     const no = () => Stage.dragCancel('hand');
-    if (st.phase === 'over' || st.turn !== ME || vm.turn !== ME) { no(); Stage.nudge(id); Sound.play('error'); return toast('Espere a sua vez'); }
+    if (st.phase === 'over' || st.slap || st.turn !== ME || vm.turn !== ME) { no(); Stage.nudge(id); Sound.play('error'); return toast(st.slap ? 'Bata a mão primeiro!' : 'Espere a sua vez'); }
     if (st.phase === 'drawn' && id !== st.drawn) { no(); Stage.nudge(id); Sound.play('error'); return toast('Só a carta que você comprou (ou passe a vez)'); }
-    if (!Ultima.canPlay(st, id)) { no(); Stage.nudge(id); Sound.play('error'); return toast(st.pending ? `Devolva com ${st.pendKind === 'd2' ? '+2 ou +4' : '+4'}, ou compre ${st.pending}` : 'Essa não serve: mesma cor ou mesmo símbolo'); }
+    if (!Ultima.canPlay(st, id)) { no(); Stage.nudge(id); Sound.play('error'); return toast(st.pending ? `Devolva uma compra ou multiplicador, ou compre ${st.pending}` : ['x2', 'x3'].includes(C[id].v) ? 'Multiplicadores só valem sobre uma compra pendente' : 'Essa não serve: mesma cor ou mesmo símbolo'); }
+    if (C[id].v === 'swap') {
+      Stage.dragHold(); pickFor = id; swapTarget = null;
+      $('#swap-targets').innerHTML = st.players.map((p, i) => i === ME ? '' : `<button class="act soft" data-target="${i}">${esc(p.name)} · ${p.count ?? p.hand.length} cartas</button>`).join('');
+      $('#swap-picker').hidden = false; return;
+    }
     if (C[id].c === 'w') { Stage.dragHold(); pickFor = id; $('#picker').hidden = false; Sound.play('click'); return; }
     trySend(id);
   }
   $('#picker').addEventListener('click', e => {
     const c = e.target.dataset?.c; $('#picker').hidden = true;
-    if (c && pickFor !== null) { Sound.play('color', c); trySend(pickFor, c); } else { Sound.play('click'); Stage.dragCancel('hand'); }
+    if (c && pickFor !== null) { Sound.play('color', c); trySend(pickFor, c); } else { Sound.play('click'); swapTarget = null; Stage.dragCancel('hand'); }
     pickFor = null;
   });
-  const canDraw = () => sending === null && st.phase === 'play' && st.turn === ME && vm.turn === ME;
+  $('#swap-targets').onclick = e => {
+    const b = e.target.closest('[data-target]'); if (!b) return;
+    swapTarget = st.players[+b.dataset.target].id;
+    $('#swap-picker').hidden = true; $('#picker').hidden = false;
+  };
+  $('#swap-cancel').onclick = () => { $('#swap-picker').hidden = true; pickFor = null; swapTarget = null; Stage.dragCancel('hand'); };
+  const canDraw = () => sending === null && !st.slap && st.phase === 'play' && st.turn === ME && vm.turn === ME;
   function tryDraw() {
-    if (sending !== null || st.phase === 'over' || st.turn !== ME || vm.turn !== ME) return false;
+    if (sending !== null || st.slap || st.phase === 'over' || st.turn !== ME || vm.turn !== ME) return false;
     if (st.phase === 'drawn') { toast('Jogue a carta que comprou ou passe a vez'); return false; }
     Sound.play('click'); act({ type: 'draw' }); return true;
   }
@@ -235,9 +257,80 @@
   $('#b-keep').onclick = () => { Sound.play('click'); act({ type: 'keep' }); };
   $('#b-call').onclick = () => { act({ type: 'call' }); $('#b-call').hidden = true; };
   $('#b-catch').onclick = () => { act({ type: 'catch' }); $('#b-catch').hidden = true; };
+  let slapSent = null;
+  function paintSlap() {
+    const s = st?.slap, zone = $('#slap-zone');
+    zone.hidden = !s || st.phase === 'over' || nowHost() < s.opensAt;
+    if (!s) { slapSent = null; return; }
+    if (zone.hidden) return;
+    const hit = s.hits.includes(ME) || slapSent === s.token, left = Math.max(0, Math.ceil((s.deadline - nowHost()) / 1000));
+    $('#slap-info').textContent = `Último compra ${s.penalty} · ${left}s`;
+    $('#b-slap').disabled = ME < 0 || hit || !left;
+    $('#b-slap strong').textContent = ME < 0 ? 'Assistindo' : hit ? 'Você já bateu!' : 'Bate a mão!';
+    $('#slap-count').textContent = `${s.hits.length} de ${st.players.length} bateram`;
+  }
+  $('#b-slap').onclick = () => {
+    if (!st.slap || $('#b-slap').disabled) return;
+    slapSent = st.slap.token; Sound.play('slam'); act({ type: 'slap', token: st.slap.token }); paintSlap();
+  };
+
+  // Editor de mão: funciona com toque e teclado, além do arrastar na mesa 3D.
+  let editorMode = null, selected = [], editOrder = [], orderPick = null;
+  function closeEditor() { editorMode = null; $('#hand-editor').hidden = true; }
+  function paintEditor() {
+    if (!editorMode || ME < 0) return;
+    const hand = st.players[ME].hand, sequence = editorMode === 'sequence';
+    if (st.slap || st.phase === 'over' || (sequence && (st.turn !== ME || st.phase !== 'play' || st.pending))) return closeEditor();
+    selected = selected.filter(id => hand.includes(id));
+    editOrder = [...editOrder.filter(id => hand.includes(id)), ...hand.filter(id => !editOrder.includes(id))];
+    const ids = sequence ? hand : editOrder;
+    $('#hand-title').textContent = sequence ? 'Jogar uma sequência' : 'Organizar sua mão';
+    $('#hand-help').textContent = sequence ? 'Marque números consecutivos da mesma cor. Eles serão jogados em ordem crescente; a primeira carta precisa servir na mesa.' : 'Selecione uma carta e use as setas para colocá-la onde quiser. Salve a ordem quando terminar.';
+    $('#hand-cards').innerHTML = ids.map(id => `<button class="hand-card" data-card="${id}" style="--c:${HEX[C[id].c] || '#292636'}" aria-pressed="${sequence ? selected.includes(id) : orderPick === id}" aria-label="${esc((VN[C[id].v] || C[id].v) + ' ' + CN[C[id].c])}"><b>${VN[C[id].v] || C[id].v}</b><small>${CN[C[id].c]}</small></button>`).join('');
+    ['#hand-left', '#hand-right', '#hand-sort'].forEach(sel => { $(sel).hidden = sequence; });
+    $('#hand-left').disabled = orderPick === null || editOrder.indexOf(orderPick) <= 0;
+    $('#hand-right').disabled = orderPick === null || editOrder.indexOf(orderPick) >= editOrder.length - 1;
+    $('#sequence-call').hidden = !sequence || hand.length - selected.length !== 1;
+    const sorted = [...selected].sort((a, b) => +C[a].v - +C[b].v);
+    $('#hand-submit').textContent = sequence ? `Jogar ${selected.length} cartas` : 'Salvar ordem';
+    $('#hand-submit').disabled = sequence && !Ultima.validSequence(st, sorted);
+  }
+  function openEditor(mode) {
+    editorMode = mode; selected = []; editOrder = [...st.players[ME].hand]; orderPick = null;
+    $('#sequence-say').checked = false; $('#hand-editor').hidden = false; paintEditor(); $('#hand-close').focus();
+  }
+  $('#b-sequence').onclick = () => openEditor('sequence');
+  $('#b-order').onclick = () => openEditor('order');
+  $('#hand-close').onclick = closeEditor;
+  $('#hand-cards').onclick = e => {
+    const b = e.target.closest('[data-card]'); if (!b) return;
+    const id = +b.dataset.card;
+    if (editorMode === 'sequence') {
+      if (!/^\d$/.test(C[id].v)) return toast('Sequências usam somente números');
+      selected = selected.includes(id) ? selected.filter(k => k !== id) : [...selected, id];
+    } else orderPick = id;
+    paintEditor(); $(`#hand-cards [data-card="${id}"]`)?.focus();
+  };
+  function moveCard(delta) {
+    const i = editOrder.indexOf(orderPick), to = i + delta;
+    if (i < 0 || to < 0 || to >= editOrder.length) return;
+    editOrder.splice(to, 0, editOrder.splice(i, 1)[0]); paintEditor();
+  }
+  $('#hand-left').onclick = () => moveCard(-1); $('#hand-right').onclick = () => moveCard(1);
+  $('#hand-sort').onclick = () => { editOrder.sort((a, b) => 'rygbw'.indexOf(C[a].c) - 'rygbw'.indexOf(C[b].c) || String(C[a].v).localeCompare(String(C[b].v), 'pt-BR', { numeric: true })); paintEditor(); };
+  $('#hand-submit').onclick = () => {
+    if (editorMode === 'sequence') {
+      const cards = [...selected].sort((a, b) => +C[a].v - +C[b].v);
+      if (sending !== null || !Ultima.validSequence(st, cards)) return;
+      sending = cards[0]; act({ type: 'play', cards, call: $('#sequence-say').checked });
+      clearTimeout(sendTimer); sendTimer = setTimeout(() => { sending = null; paint(); }, 2500);
+    } else act({ type: 'reorder', cards: editOrder });
+    closeEditor();
+  };
   addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
-    if (e.key === 'Escape' && !$('#picker').hidden) { $('#picker').hidden = true; pickFor = null; Stage.dragCancel('hand'); }
+    if (e.code === 'Space' && !$('#slap-zone').hidden && e.target.tagName !== 'BUTTON') { e.preventDefault(); $('#b-slap').click(); return; }
+    if (e.key === 'Escape') { closeEditor(); $('#swap-picker').hidden = true; $('#picker').hidden = true; pickFor = null; swapTarget = null; Stage.dragCancel('hand'); }
     if ((e.key === 'u' || e.key === 'U') && !$('#b-call').hidden) $('#b-call').click();
     if ((e.key === 'p' || e.key === 'P') && !$('#b-catch').hidden) $('#b-catch').click();
     if ((e.key === 'c' || e.key === 'C') && !$('#b-draw').hidden) tryDraw();
@@ -261,7 +354,11 @@
     const d = down; down = null; if (!d || !st) return;
     if (d.drag) {
       const where = Stage.dragEnd(e.clientX, e.clientY);
-      if (d.h.card !== undefined) { if (where === 'table') tryPlay(d.h.card); else Stage.dragCancel('hand'); }
+      if (d.h.card !== undefined) {
+        if (where === 'table') tryPlay(d.h.card);
+        else if (st.rules.manualOrder && st.phase !== 'over') { const cards = Stage.reorderAt(d.h.card, e.clientX); if (cards) act({ type: 'reorder', cards }); }
+        else Stage.dragCancel('hand');
+      }
       else if (where === 'hand' && canDraw()) { Stage.dragHold(); tryDraw(); setTimeout(() => Stage.dragCancel('deck'), 2500); }
       else Stage.dragCancel('deck');
       return;
@@ -291,12 +388,12 @@
     if (ended || !st.result) return; ended = true;
     const w = st.winner, rank = st.result.ranking, idx = id => st.players.findIndex(p => p.id === id);
     const sts = st.stats || [], R = st.result, dur = Math.max(0, Math.round((R.ms || 0) / 1000));
-    const label = id => { const v = C[id].v; return /^\d$/.test(v) ? v : { skip: '⊘', rev: '⇄', d2: '+2', wild: '★', d4: '+4' }[v]; };
+    const label = id => { const v = C[id].v; return /^\d$/.test(v) ? v : { skip: '⊘', rev: '⇄', d2: '+2', wild: '★', d4: '+4', swap: '⇄', x2: '×2', x3: '×3' }[v]; };
     const minis = p => { const h = p.hand || []; return h.slice(0, 9).map(id => `<b style="--c:${HEX[C[id].c] || '#1b1a22'}">${label(id)}</b>`).join('') + (h.length > 9 ? `<em>+${h.length - 9}</em>` : ''); };
     const nm = i => (i === ME ? 'Você' : esc(st.players[i].name.split(' ')[0]));
     // destaques: quem mais fez cada coisa (só aparece se alguém fez)
     const top = k => { let b = -1; sts.forEach((x, i) => { if (x[k] > 0 && (b < 0 || x[k] > sts[b][k])) b = i; }); return b; };
-    const tiles = [['plus', '💥', 'Mais +2/+4', n => `${n} jogado${n > 1 ? 's' : ''}`], ['drawn', '🃏', 'Comprou mais', n => `${n} carta${n > 1 ? 's' : ''}`], ['caught', '🫵', 'Pegou mais', n => `${n} vez${n > 1 ? 'es' : ''}`], ['wild', '🌈', 'Mais coringas', n => `${n}`], ['called', '📣', 'Gritou Última!', n => `${n} vez${n > 1 ? 'es' : ''}`]]
+    const tiles = [['plus', '💥', 'Mais cartas de compra', n => `${n} jogada${n > 1 ? 's' : ''}`], ['drawn', '🃏', 'Comprou mais', n => `${n} carta${n > 1 ? 's' : ''}`], ['caught', '🫵', 'Pegou mais', n => `${n} vez${n > 1 ? 'es' : ''}`], ['wild', '🌈', 'Mais coringas', n => `${n}`], ['called', '📣', 'Gritou Última!', n => `${n} vez${n > 1 ? 'es' : ''}`]]
       .map(([k, ic, t, f]) => { const i = top(k); return i < 0 ? '' : `<div class="tile" style="--pc:${st.players[i].color}"><span>${ic}</span><small>${t}</small><b>${nm(i)}</b><em>${f(sts[i][k])}</em></div>`; }).join('');
     $('#end .card').innerHTML = `
       <div class="crown" style="--pc:${st.players[w].color}"><i class="rays"></i>${avatar(w)}</div>
@@ -314,8 +411,14 @@
   function onRoom(m) {
     const first = !st;
     st = m.state; skew = m.skew || 0; faces = m.faces || {}; isHost = !!m.host;
+    Stage.setManualOrder(st.rules.manualOrder);
     const mine = st.players.findIndex(p => p.id === m.me), lastN = st.log.length ? st.log[st.log.length - 1].n : 0;
+    if (st.slap && slapSent === st.slap.token && !st.slap.hits.includes(mine)) slapSent = null;
     paintChat(m.chat);
+    if (pickFor !== null && (st.slap || st.turn !== mine || st.phase === 'over' || !st.players[mine]?.hand.includes(pickFor))) {
+      pickFor = null; swapTarget = null; $('#picker').hidden = true; $('#swap-picker').hidden = true; Stage.dragCancel('hand');
+    }
+    paintEditor();
     if (first || mine !== ME) {
       ME = mine; Stage.setSeats(st.players.length, ME); buildSeats(); placeSeats();
       $('#loader').classList.add('out'); $('#hud').hidden = false;
@@ -336,12 +439,14 @@
   function demo() {
     const n = Math.max(2, Math.min(10, +new URLSearchParams(location.search).get('demo') || 4));
     const names = ['Você', 'Lia', 'Caio', 'Bia', 'Duda', 'Téo', 'Nina', 'Rafa', 'Gabi', 'Juca'];
-    const room = { settings: { ulTurn: 30 }, players: names.slice(0, n).map((name, i) => ({ id: i ? 'bot' + i : 'eu', name, bot: !!i })) };
+    const ruleParam = new URLSearchParams(location.search).get('rules'), rules = ruleParam === 'all' ? Object.fromEntries(Ultima.RULE_LIST.map(([k]) => [k, true])) : Object.fromEntries((ruleParam || '').split(',').filter(k => k in Ultima.RULES).map(k => [k, true]));
+    const room = { settings: { ulTurn: 30, ulRules: rules }, players: names.slice(0, n).map((name, i) => ({ id: i ? 'bot' + i : 'eu', name, bot: !!i })) };
     let S = Ultima.newGame(room), timer = null, clock = null;
     const push = () => onRoom({ t: 'room', me: 'eu', host: true, skew: 0, state: JSON.parse(JSON.stringify(Ultima.viewFor(S, 'eu'))), faces: {}, chat: [] });
     function schedule() {
       clearTimeout(timer); clearTimeout(clock); if (S.phase === 'over') return;
-      if (S.deadline) clock = setTimeout(() => { if (Ultima.timeout(S)) { push(); schedule(); } }, Math.max(100, S.deadline - Date.now()));
+      const deadline = Ultima.nextDeadline(S);
+      if (deadline) clock = setTimeout(() => { if (Ultima.timeout(S)) { push(); schedule(); } }, Math.max(100, deadline - Date.now()));
       for (const id of [S.players[S.turn].id, ...S.players.map(p => p.id)]) {
         if (id === 'eu') continue;
         const a = Ultima.botAction(S, id); if (!a) continue;
