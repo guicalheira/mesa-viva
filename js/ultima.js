@@ -19,13 +19,14 @@ const Ultima = (() => {
     ['stack', 'Compras acumuladas sem limite', 'Responda a +2 ou +4 com qualquer +2 ou +4, de qualquer cor. A soma passa ao próximo, sem limite de acúmulo.'],
     ['drawUntil', 'Comprar até servir', 'Sem carta que sirva, compra até sair uma, em vez de só uma.'],
     ['sequence', 'Sequências da mesma cor', 'Jogue juntas duas ou mais cartas de números consecutivos e crescentes da mesma cor, como 1, 2, 3 ou 7, 8, 9. A primeira precisa servir na mesa.'],
+    ['stackSkip', 'Acumular bloqueios de qualquer cor', 'Jogue duas ou mais cartas Pula juntas, de qualquer cor. A primeira precisa servir na mesa; os bloqueios pulam os próximos jogadores na ordem, até a vez voltar a você.'],
     ['manualOrder', 'Organizar a própria mão', 'Arraste as cartas dentro da mão ou use Organizar para escolher a ordem. Novas cartas entram no final.'],
-    ['slap9', 'Bater a mão no 9', 'Ao jogar um 9 ou cobrir um 9, todos batem a mão. O último compra 2; um 9 sobre outro 9 vale 3. Quem não bater em 7 segundos também compra.'],
+    ['slap9', 'Bater a mão no 9', 'Quando um 9 fica no topo da mesa, todos batem a mão. O último compra 2; um 9 diretamente sobre outro 9 vale 3. Cobrir o 9 com outra carta não dispara a batida. Quem não bater em 7 segundos também compra.'],
     ['swapHands', 'Carta Troca de mão', 'Inclui 4 coringas de troca: ao jogar, escolha uma cor e outro jogador para trocar as mãos inteiras.'],
     ['x2', 'Carta ×2', 'Inclui 2 cartas ×2: só podem ser jogadas sobre uma compra pendente e dobram o total para o próximo.'],
     ['x3', 'Carta ×3', 'Inclui 2 cartas ×3: só podem ser jogadas sobre uma compra pendente e triplicam o total para o próximo.'],
   ];
-  const RULES = { stack: true, drawUntil: false, sequence: false, manualOrder: true, slap9: false, swapHands: false, x2: false, x3: false };
+  const RULES = { stack: true, drawUntil: false, sequence: false, stackSkip: true, manualOrder: true, slap9: false, swapHands: false, x2: false, x3: false };
   const enabled = (rules, c) => c.v === 'swap' ? !!rules.swapHands : ['x2', 'x3'].includes(c.v) ? !!rules[c.v] : true;
   const deckIds = rules => [...CARDS.keys()].filter(id => enabled(rules, CARDS[id]));
   const HAND = 7, LOG = 60, INTRO_MS = 8800, MIN_LEFT = 8000, BOT_CATCH = 0.6, BOT_CALL = 0.85;
@@ -50,6 +51,15 @@ const Ultima = (() => {
   function validSequence(st, ids) {
     return !!st.rules.sequence && Array.isArray(ids) && ids.length >= 2 && ids.length <= 10 && new Set(ids).size === ids.length &&
       ids.every((id, k) => Number.isInteger(id) && CARDS[id] && isNum(id) && (!k || (CARDS[id].c === CARDS[ids[0]].c && +CARDS[id].v === +CARDS[ids[k - 1]].v + 1))) && canPlay(st, ids[0]) && !st.pending;
+  }
+  function validSkipStack(st, ids) {
+    return !!st.rules.stackSkip && Array.isArray(ids) && ids.length >= 2 && ids.length <= 8 && new Set(ids).size === ids.length &&
+      ids.every(id => Number.isInteger(id) && CARDS[id]?.v === 'skip') && canPlay(st, ids[0]) && !st.pending;
+  }
+  // O aviso só corresponde à batida atual quando a carta e o evento já chegaram à tela.
+  function slapVisible(st, visibleCard, token) {
+    const s = st.slap, id = st.pile[st.pile.length - 1];
+    return !!(st.rules.slap9 && s && st.phase !== 'over' && CARDS[id]?.v === '9' && id === s.card && visibleCard === id && token === s.token);
   }
 
   // ---------- regras ----------
@@ -83,9 +93,14 @@ const Ultima = (() => {
       nextTurn(st);
     }
   }
-  function cardEffect(st, c) {
+  function cardEffect(st, c, count = 1) {
     if (c.v === 'rev') { st.dir = -st.dir; st.ev.push({ t: 'rev', dir: st.dir }); }
-    if (c.v === 'skip' || (c.v === 'rev' && N(st) === 2)) { st.ev.push({ t: 'skip', p: step(st) }); return nextTurn(st, 2); }
+    if (c.v === 'skip') {
+      const skipped = Math.min(count, N(st) - 1); // uma pilha não bloqueia quem a jogou
+      for (let k = 1; k <= skipped; k++) st.ev.push({ t: 'skip', p: step(st, k) });
+      return nextTurn(st, skipped + 1);
+    }
+    if (c.v === 'rev' && N(st) === 2) { st.ev.push({ t: 'skip', p: step(st) }); return nextTurn(st, 2); }
     if (['x2', 'x3'].includes(c.v)) { st.pending *= +c.v[1]; st.pendKind = c.v; return nextTurn(st); }
     if (c.v === 'd2' || c.v === 'd4') {
       const add = c.v === 'd2' ? 2 : 4;
@@ -97,7 +112,7 @@ const Ultima = (() => {
   }
   function startSlap(st, actor, card, nines) {
     st.slap = { token: ++st.slapN, actor, card, penalty: nines >= 2 ? 3 : 2, hits: [], opensAt: null, deadline: 0, botAt: [] };
-    st.ev.push({ t: 'slapStart', penalty: st.slap.penalty });
+    st.ev.push({ t: 'slapStart', penalty: st.slap.penalty, card, token: st.slap.token });
   }
   function finishSlap(st) {
     const s = st.slap, losers = st.players.map((_, i) => i).filter(i => !s.hits.includes(i));
@@ -127,12 +142,12 @@ const Ultima = (() => {
       if (!Array.isArray(ids) || !ids.length || !ids.every(id => p.hand.includes(id))) return 'Você não tem essa carta';
       const id = ids[0], c = CARDS[id];
       if (st.phase === 'drawn' && (ids.length !== 1 || id !== st.drawn)) return 'Só dá para jogar a carta que você comprou';
-      if (ids.length > 1 && !validSequence(st, ids)) return 'Escolha uma sequência crescente de números consecutivos da mesma cor';
+      if (ids.length > 1 && !validSequence(st, ids) && !validSkipStack(st, ids)) return 'Escolha números consecutivos da mesma cor ou cartas Pula com a regra de acúmulo habilitada';
       if (!canPlay(st, id)) return st.pending ? `Devolva com uma carta de compra ou multiplicador habilitado, ou compre ${st.pending}` : 'Essa carta não serve agora';
       if (c.c === 'w' && !COLORS.includes(a.color)) return 'Escolha uma cor';
       const target = st.players.findIndex(q => q.id === a.target);
       if (c.v === 'swap' && (target < 0 || target === i)) return 'Escolha outro jogador para trocar a mão';
-      const oldTop = top(st), lastId = ids[ids.length - 1];
+      const lastId = ids[ids.length - 1];
       st.exposed = null;
       const wasSaid = p.said;
       if (a.call && p.hand.length - ids.length === 1) p.said = true;
@@ -140,7 +155,7 @@ const Ultima = (() => {
         p.hand.splice(p.hand.indexOf(card), 1); st.pile.push(card);
         st.ev.push({ t: 'play', p: i, card, color: CARDS[card].c === 'w' ? a.color : CARDS[card].c });
       });
-      st.color = c.c === 'w' ? a.color : c.c;
+      st.color = CARDS[lastId].c === 'w' ? a.color : CARDS[lastId].c;
       const sx = st.stats?.[i]; if (sx) { sx.played += ids.length; if (['d2', 'd4', 'x2', 'x3'].includes(c.v)) sx.plus++; if (c.c === 'w') sx.wild++; }
       if (c.v === 'swap') {
         const q = st.players[target]; [p.hand, q.hand] = [q.hand, p.hand]; p.said = q.said = false;
@@ -152,11 +167,11 @@ const Ultima = (() => {
         if (!p.said) st.exposed = { p: i, bots: Math.random() < BOT_CATCH };
         else if (!wasSaid) st.ev.push({ t: 'call', p: i });
       }
-      const nines = (oldTop.v === '9' ? 1 : 0) + ids.filter(card => CARDS[card].v === '9').length;
+      const nines = CARDS[lastId].v === '9' ? 1 + (CARDS[st.pile[st.pile.length - 2]]?.v === '9' ? 1 : 0) : 0;
       if (st.rules.slap9 && nines) return startSlap(st, i, lastId, nines);
       const winner = st.players.findIndex(q => !q.hand.length);
       if (winner >= 0) return win(st, winner);
-      cardEffect(st, CARDS[lastId]);
+      cardEffect(st, CARDS[lastId], ids.length);
     },
     reorder(st, i, a) {
       if (!st.rules.manualOrder) return 'A organização manual não está habilitada';
@@ -297,6 +312,10 @@ const Ultima = (() => {
     };
     const id = ok.reduce((b, k) => (score(k) > score(b) ? k : b));
     const a = { type: 'play', card: id };
+    if (st.rules.stackSkip && st.phase !== 'drawn' && CARDS[id].v === 'skip' && !st.pending) {
+      const ids = [id, ...p.hand.filter(k => k !== id && CARDS[k].v === 'skip')];
+      if (ids.length > 1) a.cards = ids;
+    }
     if (st.rules.sequence && st.phase !== 'drawn' && isNum(id) && !st.pending) {
       const ids = [id], c = CARDS[id];
       for (let v = +c.v + 1; v <= 9; v++) {
@@ -342,6 +361,6 @@ const Ultima = (() => {
     };
   }
 
-  return { COLORS, CARDS, RULES, RULE_LIST, deckIds, validSequence, canPlay, pts, newGame, act, botAction, afkAction, botDelay, nextDeadline, timeout, viewFor };
+  return { COLORS, CARDS, RULES, RULE_LIST, deckIds, validSequence, validSkipStack, slapVisible, canPlay, pts, newGame, act, botAction, afkAction, botDelay, nextDeadline, timeout, viewFor };
 })();
 if (typeof module !== 'undefined') module.exports = Ultima;

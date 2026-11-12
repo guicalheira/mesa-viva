@@ -11,9 +11,9 @@ Jogos: **Magnata**, de compra e venda de propriedades — leilões, níveis de c
 - `tools/gen_art.py` — regenera as artes (`python tools/gen_art.py --force nome`), usando o Python do ComfyUI
 - `tools/build.py` — gera o `dist/` depois de editar o código
 
-**Última!** — descarte de cartas para 2–10 jogadores. O anfitrião marca as regras no lobby: compras acumuladas em qualquer ordem (+2 e +4), comprar até servir, sequências crescentes da mesma cor, organização manual da mão, bater a mão no 9, Troca de mão e multiplicadores ×2/×3. Por exemplo: +2, +4, ×2, ×3 deixam uma compra de **36 cartas** para o próximo.
+**Última!** — descarte de cartas para 2–10 jogadores. O anfitrião marca as regras no lobby: compras acumuladas em qualquer ordem (+2 e +4), comprar até servir, sequências crescentes da mesma cor, bloqueios acumulados de qualquer cor, organização manual da mão, bater a mão no 9, Troca de mão e multiplicadores ×2/×3. Por exemplo: +2, +4, ×2, ×3 deixam uma compra de **36 cartas** para o próximo.
 
-Use **Jogar sequência** para marcar as cartas e **Organizar** para mudar a ordem com setas; também é possível arrastar dentro da mão. Na regra do 9, bata na mãozinha (ou pressione Espaço): o último compra 2 cartas, ou 3 se for um 9 sobre outro. Quem não bater em 7 segundos recebe a penalidade. A carta Troca de mão troca todas as cartas com o jogador escolhido; se você a jogar como última carta, entrega uma mão vazia e o alvo vence. O arquivo distribuível inclui a mesa atual do Última, mantendo as regras na mesma versão.
+Use **Jogar sequência** para marcar as cartas, **Jogar bloqueios** para juntar cartas Pula de qualquer cor e **Organizar** para mudar a ordem com setas; também é possível arrastar dentro da mão. A primeira carta de um grupo precisa servir na mesa. Dois bloqueios pulam os próximos dois jogadores no sentido atual. Na regra do 9, a mãozinha só aparece depois que o 9 está visível no topo da mesa: o último compra 2 cartas, ou 3 se for um 9 diretamente sobre outro. Cobrir o 9 com outra carta não abre nova batida. Quem não bater em 7 segundos recebe a penalidade. A carta Troca de mão troca todas as cartas com o jogador escolhido; se você a jogar como última carta, entrega uma mão vazia e o alvo vence. O arquivo distribuível inclui a mesa atual do Última, mantendo as regras na mesma versão.
 
 ## Arquitetura
 | Arquivo | Papel |
