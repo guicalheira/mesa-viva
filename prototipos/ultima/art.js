@@ -90,7 +90,7 @@ const Art = (() => {
     }
     g.restore();
   }
-  const LABEL = { skip: null, rev: null, d2: '+2', wild: null, d4: '+4' };
+  const LABEL = { skip: null, rev: null, d2: '+2', wild: null, d4: '+4', swap: '⇄', x2: '×2', x3: '×3' };
   function corner(g, c, v, x, y, s) {
     g.save(); g.translate(x, y);
     if (v === 'skip') inked(g, skipPath(s * 0.42), s, { lw: s * 0.09, depth: s * 0.05 });
@@ -180,6 +180,8 @@ const Art = (() => {
     else if (v === 'wild') pinwheel(g, 232, -0.2);
     else if (v === 'd4') { pinwheel(g, 222, -0.2); numeral(g, '+4', 0, 8, 250, false); }
     else if (v === 'd2') sticker(g, '+2', 0, 10, 270, { lw: 24, depth: 14 });
+    else if (v === 'swap') { pinwheel(g, 200, -0.2); sticker(g, '⇄', 0, 0, 270, { lw: 24, depth: 14 }); }
+    else if (v === 'x2' || v === 'x3') { pinwheel(g, 222, -0.2); numeral(g, LABEL[v], 0, 8, 250, false); }
     else {
       sticker(g, v, 0, 14, 400, { lw: 28, depth: 16 });
       if (v === '6' || v === '9') { g.fillStyle = INK; rr(-70, 175, 140, 26, 13, g); g.fill(); g.fillStyle = '#fff'; rr(-60, 170, 120, 16, 8, g); g.fill(); }

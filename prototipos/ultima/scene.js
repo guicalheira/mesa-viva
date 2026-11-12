@@ -362,7 +362,17 @@ const Stage = (() => {
     });
   }
   const order = id => 'rygbw'.indexOf(C[id].c) * 20 + ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'skip', 'rev', 'd2', 'wild', 'd4'].indexOf(C[id].v);
-  const sortHand = () => hand.sort((a, b) => order(a.userData.id) - order(b.userData.id) || a.userData.id - b.userData.id);
+  let manualOrder = false;
+  const sortHand = () => { if (!manualOrder) hand.sort((a, b) => order(a.userData.id) - order(b.userData.id) || a.userData.id - b.userData.id); };
+  function reorderAt(id, x) {
+    if (!manualOrder) return null;
+    const from = hand.findIndex(m => m.userData.id === id); if (from < 0) return null;
+    let to = 0, distance = Infinity;
+    hand.forEach((m, k) => { const d = Math.abs(project(handTarget(k, hand.length).p).x - x); if (d < distance) { distance = d; to = k; } });
+    hand.splice(to, 0, hand.splice(from, 1)[0]);
+    dragCancel('hand'); layoutHand();
+    return hand.map(m => m.userData.id);
+  }
 
   // ---------- cartas dos outros: em pé no feltro, numa fileira com uma curvinha leve, de costas para o centro ----------
   // de costas para o centro e meio virada para mim (de perfil a fileira sumia)
@@ -629,6 +639,7 @@ const Stage = (() => {
       hand.filter(m => !want.includes(m.userData.id)).forEach(m => { hand.splice(hand.indexOf(m), 1); if (drag?.m === m) drag = null; drop(m); });
       want.filter(id => !have.includes(id)).forEach(id => { const m = newCard(id, false); place(m, deckPose()); hand.push(m); });
       hand.forEach(m => { m.userData.down = false; });
+      if (manualOrder) hand.sort((a, b) => want.indexOf(a.userData.id) - want.indexOf(b.userData.id));
       sortHand(); layoutHand();
     }
     st.players.forEach((p, i) => {
@@ -749,7 +760,7 @@ const Stage = (() => {
   return {
     get ok() { return ok; }, set speed(v) { speed = v; }, get speed() { return speed; }, get dragging() { return !!drag && !drag.held; },
     FELTS, setFelt, init, setSeats, snap, sync, deal, reveal, play, draw, reshuffle, shock, setColor, setDir, setTurn, setHandState: s => { handState = s; },
-    pick, hover, nudge, dragStart, dragMove, dragEnd, dragHold, dragCancel,
+    pick, hover, nudge, dragStart, dragMove, dragEnd, dragHold, dragCancel, reorderAt, setManualOrder: v => { manualOrder = !!v; },
     seatPoint: i => seats[i]?.badge || null, fanPoint: i => seats[i]?.badge || null,
     handTop: () => handTopY(), pilePoint: () => project(PILE.clone().setY(0.4)), deckPoint: () => project(DECK), wait,
   };

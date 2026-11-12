@@ -300,3 +300,30 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 
 /* contraste: texto branco com contorno escuro grosso; a cor da jogada vira uma sombra dura e um brilho em volta */
 .burst.seal > span { color: #fff; -webkit-text-stroke: .09em var(--ink); paint-order: stroke fill; text-shadow: .05em .09em 0 var(--bc), .07em .12em 0 var(--ink), 0 0 .5em color-mix(in srgb, var(--bc) 65%, transparent); }
+
+/* Regras da casa: escolha, organização e reação. */
+#hand-tools { position: absolute; bottom: calc(14px + var(--safe-b)); right: 12px; display: flex; gap: 8px; }
+#hand-tools .act { font-size: .88em; padding: .55em .9em; }
+.choice-overlay { position: absolute; inset: 0; z-index: 24; display: grid; place-items: center; padding: 14px; background: #0a0915b8; }
+.choice-card { width: min(610px, 100%); max-height: 86dvh; overflow: auto; touch-action: pan-y; color: var(--ink); background: var(--paper); border: 3px solid var(--ink); border-radius: 22px; padding: 22px; box-shadow: 0 7px 0 var(--ink); text-align: center; }
+.choice-card h2 { margin: 0 0 8px; font: 400 1.7em 'Lilita One', sans-serif; }
+.choice-card p { font-size: .9em; line-height: 1.4; margin: 0 0 18px; }
+#hand-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 16px; }
+.hand-card { width: 68px; min-height: 92px; padding: 4px; border: 3px solid transparent; border-radius: 10px; background: var(--c); color: white; box-shadow: 0 2px 0 #1a143355; }
+.hand-card b { display: block; font: 400 1.6em 'Lilita One', sans-serif; }
+.hand-card small { display: block; font-size: .7em; }
+.hand-card[aria-pressed=true] { border-color: var(--ink); outline: 3px solid #ffbe1f; transform: translateY(-3px); }
+.choice-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 12px 0; }
+.choice-card button:disabled { opacity: .4; cursor: default; }
+#sequence-call { display: block; font-size: .9em; padding: 10px; }
+#swap-targets { display: grid; gap: 10px; margin: 15px 0; }
+#slap-zone { position: absolute; z-index: 30; left: 50%; top: 47%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 8px; padding: 16px 22px; border: 3px solid var(--ink); border-radius: 26px; background: var(--paper); color: var(--ink); text-align: center; box-shadow: 0 6px 0 var(--ink), 0 12px 50px #0008; min-width: 230px; }
+#b-slap { display: grid; place-items: center; width: 170px; min-height: 150px; font-size: 4em; border-radius: 24px; background: #ffd34d; border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); }
+#b-slap strong { font: 400 1rem 'Lilita One', sans-serif; margin-bottom: 10px; }
+#b-slap:disabled { background: #dad5c8; cursor: default; }
+#slap-info, #slap-count { font-size: .85em; }
+@media (max-width: 560px) {
+  #hand-tools { bottom: calc(72px + var(--safe-b)); right: 8px; flex-direction: column; }
+  .choice-card { padding: 16px; }
+  .hand-card { width: 57px; min-height: 80px; }
+}
