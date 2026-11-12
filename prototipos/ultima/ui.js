@@ -60,7 +60,7 @@
   if (window.ResizeObserver) new ResizeObserver(() => st && requestAnimationFrame(placeSeats)).observe($('#gl')); // o painel abrindo e fechando muda a mesa sem mudar a janela
 
   // ---------- o que está na tela agora (anda junto com as animações) ----------
-  const fromState = () => ({ counts: st.players.map(p => p.count ?? p.hand.length), turn: st.phase === 'over' ? -1 : st.turn, color: st.color, dir: st.dir });
+  const fromState = () => ({ counts: st.players.map(p => p.count ?? p.hand.length), turn: st.phase === 'over' ? -1 : st.turn, color: st.color, dir: st.dir, top: st.pile[st.pile.length - 1], slapToken: st.slap?.token ?? null });
   function paint() {
     if (!st || !vm) return;
     const idle = !busy, over = st.phase === 'over';
@@ -73,7 +73,7 @@
     const mine = !over && !st.slap && st.turn === ME && vm.turn === ME; // a vez já chegou na tela (não espera os efeitos acabarem)
     let txt;
     if (over) txt = st.winner === ME ? 'Você bateu!' : `${nameOf(st.winner)} bateu!`;
-    else if (st.slap) txt = 'Atenção ao 9: bate a mão!';
+    else if (st.slap) txt = Ultima.slapVisible(st, vm.top, vm.slapToken) ? 'Atenção ao 9: bate a mão!' : 'Aguarde a carta chegar à mesa…';
     else if (mine) txt = st.phase === 'drawn' ? 'Jogue a que comprou ou passe' : st.pending ? `Devolva ou compre ${st.pending}` : 'Sua vez!';
     else txt = vm.turn === ME ? 'Sua vez!' : vm.turn >= 0 ? `Vez de ${nameOf(vm.turn)}` : 'Embaralhando…';
     $('#st-text').textContent = txt; $('#status').classList.toggle('mine', mine);
@@ -95,6 +95,7 @@
     if (!canCatch) bc.dataset.p = '';
     $('#b-order').hidden = !(playing && st.rules.manualOrder && idle);
     $('#b-sequence').hidden = !(mine && st.phase === 'play' && !st.pending && st.rules.sequence && idle);
+    $('#b-blocks').hidden = !(mine && st.phase === 'play' && !st.pending && st.rules.stackSkip && idle && me.hand.filter(id => C[id].v === 'skip').length >= 2);
     paintSlap();
     paintPlates(); placeSeats();
   }
@@ -158,14 +159,14 @@
   async function playEv(e) {
     const W = ms => Stage.wait(ms);
     switch (e.t) {
-      case 'deal': log('Cartas distribuídas. Boa partida!'); await Stage.deal(st, ME, e.first); vm.counts = st.players.map(() => 7); vm.color = C[e.top].c; paint(); await raffle(e.first); log(`${who(e.first)} começa`); break;
+      case 'deal': log('Cartas distribuídas. Boa partida!'); await Stage.deal(st, ME, e.first); vm.counts = st.players.map(() => 7); vm.color = C[e.top].c; vm.top = e.top; paint(); await raffle(e.first); log(`${who(e.first)} começa`); break;
       case 'play': {
         vm.counts[e.p]--; paint();
         const c = C[e.card];
         if (e.p === ME) { sending = null; clearTimeout(sendTimer); }
         log(`${who(e.p)} jogou ${cardTxt(e.card, e.color)}`);
         await Stage.play(e.p, e.card, e.color, vm.counts[e.p]);
-        vm.color = e.color; paint();
+        vm.color = e.color; vm.top = e.card; paint();
         if (c.c === 'w') { Sound.play('wild', e.color); ripple(Stage.pilePoint(), HEX[e.color]); }
         if (c.v === 'd2' || c.v === 'd4') { Sound.play('plus', c.v === 'd4' ? 4 : 2); burst(`${c.v === 'd4' ? '+4' : '+2'}<small>compra!</small>`, Stage.pilePoint(), 'plus big', HEX[e.color]); await W(260); }
         if (c.v === 'x2' || c.v === 'x3') { Sound.play('plus', +c.v[1]); burst(`${VN[c.v]}<small>multiplicou!</small>`, Stage.pilePoint(), 'plus big', HEX[e.color]); await W(260); }
@@ -186,7 +187,7 @@
       case 'shuffle': toast('Monte acabou: embaralhando o descarte'); await Stage.reshuffle(e.count); break;
       case 'turn': vm.turn = e.p; Stage.setTurn(e.p, st.players[e.p]?.color); if (e.p === ME && !queue.some(q => q.t === 'turn')) Sound.play('turn'); paint(); await W(90); break;
       case 'swap': vm.counts = [...e.counts]; log(`${who(e.p)} trocou a mão com ${who(e.target)}`); Sound.play('wild', st.color); paint(); break;
-      case 'slapStart': log(`<b>Bate a mão!</b> O último compra ${e.penalty}`); Sound.play('call'); break;
+      case 'slapStart': vm.slapToken = e.token; log(`<b>Bate a mão!</b> O último compra ${e.penalty}`); if (Ultima.slapVisible(st, vm.top, vm.slapToken)) Sound.play('call'); paint(); break;
       case 'slapHit': log(`${who(e.p)} bateu a mão`); break;
       case 'slapEnd': log(`${e.losers.map(who).join(', ')} ficou por último: +${e.penalty}`); Sound.play('slam'); e.losers.forEach(shake); break;
       case 'win': {
@@ -260,7 +261,7 @@
   let slapSent = null;
   function paintSlap() {
     const s = st?.slap, zone = $('#slap-zone');
-    zone.hidden = !s || st.phase === 'over' || nowHost() < s.opensAt;
+    zone.hidden = !s || !Ultima.slapVisible(st, vm?.top, vm?.slapToken) || nowHost() < s.opensAt || nowHost() >= s.deadline;
     if (!s) { slapSent = null; return; }
     if (zone.hidden) return;
     const hit = s.hits.includes(ME) || slapSent === s.token, left = Math.max(0, Math.ceil((s.deadline - nowHost()) / 1000));
@@ -279,34 +280,36 @@
   function closeEditor() { editorMode = null; $('#hand-editor').hidden = true; }
   function paintEditor() {
     if (!editorMode || ME < 0) return;
-    const hand = st.players[ME].hand, sequence = editorMode === 'sequence';
-    if (st.slap || st.phase === 'over' || (sequence && (st.turn !== ME || st.phase !== 'play' || st.pending))) return closeEditor();
+    const hand = st.players[ME].hand, sequence = editorMode === 'sequence', blocks = editorMode === 'blocks', multi = sequence || blocks;
+    if (st.slap || st.phase === 'over' || (multi && (st.turn !== ME || st.phase !== 'play' || st.pending))) return closeEditor();
     selected = selected.filter(id => hand.includes(id));
     editOrder = [...editOrder.filter(id => hand.includes(id)), ...hand.filter(id => !editOrder.includes(id))];
-    const ids = sequence ? hand : editOrder;
-    $('#hand-title').textContent = sequence ? 'Jogar uma sequência' : 'Organizar sua mão';
-    $('#hand-help').textContent = sequence ? 'Marque números consecutivos da mesma cor. Eles serão jogados em ordem crescente; a primeira carta precisa servir na mesa.' : 'Selecione uma carta e use as setas para colocá-la onde quiser. Salve a ordem quando terminar.';
-    $('#hand-cards').innerHTML = ids.map(id => `<button class="hand-card" data-card="${id}" style="--c:${HEX[C[id].c] || '#292636'}" aria-pressed="${sequence ? selected.includes(id) : orderPick === id}" aria-label="${esc((VN[C[id].v] || C[id].v) + ' ' + CN[C[id].c])}"><b>${VN[C[id].v] || C[id].v}</b><small>${CN[C[id].c]}</small></button>`).join('');
-    ['#hand-left', '#hand-right', '#hand-sort'].forEach(sel => { $(sel).hidden = sequence; });
+    const ids = blocks ? hand.filter(id => C[id].v === 'skip') : sequence ? hand : editOrder;
+    $('#hand-title').textContent = blocks ? 'Acumular bloqueios' : sequence ? 'Jogar uma sequência' : 'Organizar sua mão';
+    $('#hand-help').textContent = blocks ? 'Marque duas ou mais cartas Pula, de qualquer cor. A primeira selecionada precisa servir na mesa; cada carta pula uma pessoa no sentido atual do jogo.' : sequence ? 'Marque números consecutivos da mesma cor. Eles serão jogados em ordem crescente; a primeira carta precisa servir na mesa.' : 'Selecione uma carta e use as setas para colocá-la onde quiser. Salve a ordem quando terminar.';
+    $('#hand-cards').innerHTML = ids.map(id => `<button class="hand-card" data-card="${id}" style="--c:${HEX[C[id].c] || '#292636'}" aria-pressed="${multi ? selected.includes(id) : orderPick === id}" aria-label="${esc((VN[C[id].v] || C[id].v) + ' ' + CN[C[id].c])}"><b>${VN[C[id].v] || C[id].v}</b><small>${CN[C[id].c]}</small></button>`).join('');
+    ['#hand-left', '#hand-right', '#hand-sort'].forEach(sel => { $(sel).hidden = multi; });
     $('#hand-left').disabled = orderPick === null || editOrder.indexOf(orderPick) <= 0;
     $('#hand-right').disabled = orderPick === null || editOrder.indexOf(orderPick) >= editOrder.length - 1;
-    $('#sequence-call').hidden = !sequence || hand.length - selected.length !== 1;
-    const sorted = [...selected].sort((a, b) => +C[a].v - +C[b].v);
-    $('#hand-submit').textContent = sequence ? `Jogar ${selected.length} cartas` : 'Salvar ordem';
-    $('#hand-submit').disabled = sequence && !Ultima.validSequence(st, sorted);
+    $('#sequence-call').hidden = !multi || hand.length - selected.length !== 1;
+    const cards = sequence ? [...selected].sort((a, b) => +C[a].v - +C[b].v) : selected;
+    $('#hand-submit').textContent = blocks ? `Jogar ${selected.length} bloqueios` : sequence ? `Jogar ${selected.length} cartas` : 'Salvar ordem';
+    $('#hand-submit').disabled = blocks ? !Ultima.validSkipStack(st, cards) : sequence && !Ultima.validSequence(st, cards);
   }
   function openEditor(mode) {
     editorMode = mode; selected = []; editOrder = [...st.players[ME].hand]; orderPick = null;
     $('#sequence-say').checked = false; $('#hand-editor').hidden = false; paintEditor(); $('#hand-close').focus();
   }
   $('#b-sequence').onclick = () => openEditor('sequence');
+  $('#b-blocks').onclick = () => openEditor('blocks');
   $('#b-order').onclick = () => openEditor('order');
   $('#hand-close').onclick = closeEditor;
   $('#hand-cards').onclick = e => {
     const b = e.target.closest('[data-card]'); if (!b) return;
     const id = +b.dataset.card;
-    if (editorMode === 'sequence') {
-      if (!/^\d$/.test(C[id].v)) return toast('Sequências usam somente números');
+    if (editorMode === 'sequence' || editorMode === 'blocks') {
+      if (editorMode === 'sequence' && !/^\d$/.test(C[id].v)) return toast('Sequências usam somente números');
+      if (editorMode === 'blocks' && C[id].v !== 'skip') return toast('Escolha somente cartas Pula');
       selected = selected.includes(id) ? selected.filter(k => k !== id) : [...selected, id];
     } else orderPick = id;
     paintEditor(); $(`#hand-cards [data-card="${id}"]`)?.focus();
@@ -319,9 +322,9 @@
   $('#hand-left').onclick = () => moveCard(-1); $('#hand-right').onclick = () => moveCard(1);
   $('#hand-sort').onclick = () => { editOrder.sort((a, b) => 'rygbw'.indexOf(C[a].c) - 'rygbw'.indexOf(C[b].c) || String(C[a].v).localeCompare(String(C[b].v), 'pt-BR', { numeric: true })); paintEditor(); };
   $('#hand-submit').onclick = () => {
-    if (editorMode === 'sequence') {
-      const cards = [...selected].sort((a, b) => +C[a].v - +C[b].v);
-      if (sending !== null || !Ultima.validSequence(st, cards)) return;
+    if (editorMode === 'sequence' || editorMode === 'blocks') {
+      const cards = editorMode === 'sequence' ? [...selected].sort((a, b) => +C[a].v - +C[b].v) : [...selected];
+      if (sending !== null || !(editorMode === 'blocks' ? Ultima.validSkipStack(st, cards) : Ultima.validSequence(st, cards))) return;
       sending = cards[0]; act({ type: 'play', cards, call: $('#sequence-say').checked });
       clearTimeout(sendTimer); sendTimer = setTimeout(() => { sending = null; paint(); }, 2500);
     } else act({ type: 'reorder', cards: editOrder });
@@ -423,7 +426,7 @@
       ME = mine; Stage.setSeats(st.players.length, ME); buildSeats(); placeSeats();
       $('#loader').classList.add('out'); $('#hud').hidden = false;
       // partida começando agora: mostra a distribuição; senão, monta a mesa como está
-      if (st.log.length === 1 && st.log[0].t === 'deal' && nowHost() - st.startAt < 4000) { queue = [...st.log]; vm = { counts: st.players.map(() => 0), turn: -1, color: st.color, dir: 1 }; }
+      if (st.log[0]?.t === 'deal' && st.log.every(e => ['deal', 'slapStart'].includes(e.t)) && nowHost() - st.startAt < 4000) { queue = [...st.log]; vm = { counts: st.players.map(() => 0), turn: -1, color: st.color, dir: 1, top: null, slapToken: null }; }
       else needSnap = true;
       seen = lastN; return void pump();
     }
