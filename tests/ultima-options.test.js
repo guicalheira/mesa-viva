@@ -125,14 +125,13 @@ test('um 9 pausa a partida, rejeita batida antecipada/duplicada e pune o último
   assert.ok(st.deadline > c.now); assert.equal(st.exposed.p, 0);
 });
 
-test('cobrir o 9 com outra carta também dispara; dois 9 valem três cartas', t => {
-  const c = clock(t);
-  for (const [played, expected] of [[R(1), 2], [B(9), 3]]) {
-    const st = table([[played, G(1)], [B(1), G(2)]], R(9), { slap9: true });
-    assert.equal(play(st, 0, played), null); assert.equal(st.slap.penalty, expected);
-    c.now = st.slap.opensAt + 1; assert.equal(hit(st, 0), null);
-    assert.equal(st.players[1].hand.length, 2 + expected);
-  }
+test('cobrir o 9 com outra carta não dispara; dois 9 diretamente juntos valem três', t => {
+  const c = clock(t), normal = table([[R(1), G(1)], [B(1), G(2)]], R(9), { slap9: true });
+  assert.equal(play(normal, 0, R(1)), null); assert.equal(normal.slap, null); assert.equal(normal.turn, 1);
+  const st = table([[B(9), G(1)], [B(1), G(2)]], R(9), { slap9: true });
+  assert.equal(play(st, 0, B(9)), null); assert.equal(st.slap.penalty, 3);
+  c.now = st.slap.opensAt + 1; assert.equal(hit(st, 0), null);
+  assert.equal(st.players[1].hand.length, 5);
 });
 
 test('um 9 na abertura e um 9 ao final de sequência também pedem batida', t => {
@@ -172,13 +171,86 @@ test('token antigo não bate numa rodada nova, e espectadores não participam', 
   assert.deepEqual(U.viewFor(st, 'p0').slap.botAt, []);
 });
 
-test('cobrir 9 com +2 só passa a dívida depois de resolver a batida', t => {
-  const c = clock(t), st = table([[R('d2'), R(1)], [B('d2'), B(2)], [G(1), G(2)]], R(9), { slap9: true });
+test('cobrir 9 com +2 passa a dívida sem abrir outra batida', () => {
+  const st = table([[R('d2'), R(1)], [B('d2'), B(2)], [G(1), G(2)]], R(9), { slap9: true });
   st.deck = st.deck.filter(id => ![G(3), G(4)].includes(id)).concat([G(3), G(4)]);
-  assert.equal(play(st, 0, R('d2')), null); assert.equal(st.pending, 0); assert.equal(st.turn, 0);
-  c.now = st.slap.opensAt + 1; hit(st, 0); hit(st, 1);
-  assert.equal(st.pending, 2); assert.equal(st.turn, 1); assert.equal(st.players[2].hand.length, 4);
-  assert.equal(play(st, 1, B('d2')), null); assert.equal(st.pending, 0); assert.equal(st.players[2].hand.length, 8);
+  assert.equal(play(st, 0, R('d2')), null); assert.equal(st.slap, null);
+  assert.equal(st.pending, 2); assert.equal(st.turn, 1); assert.equal(st.players[2].hand.length, 2);
+  assert.equal(play(st, 1, B('d2')), null); assert.equal(st.pending, 0); assert.equal(st.players[2].hand.length, 6);
+});
+
+test('dois bloqueios de cores diferentes pulam os próximos dois jogadores', () => {
+  const st = table([[R('skip'), B('skip'), G(1)], [B(1)], [G(2)], [R(2), B(2)]], R(5));
+  assert.equal(act(st, 0, { type: 'play', cards: [R('skip'), B('skip')], call: true }), null);
+  assert.equal(st.turn, 3); assert.equal(st.color, 'b'); assert.deepEqual(st.pile.slice(-2), [R('skip'), B('skip')]);
+  assert.deepEqual(st.log.filter(e => e.t === 'skip').map(e => e.p), [1, 2]);
+  assert.deepEqual(st.players[0].hand, [G(1)]); assert.equal(st.players[0].said, true); assert.equal(st.stats[0].played, 2);
+});
+
+test('bloqueios seguem o sentido invertido e voltam ao jogador depois de pular os demais', () => {
+  for (const dir of [1, -1]) {
+    const st = table([[R('skip'), B('skip'), G('skip'), R(1)], [B(1)], [G(2)], [R(2)]], R(5)); st.dir = dir;
+    assert.equal(act(st, 0, { type: 'play', cards: [R('skip'), B('skip'), G('skip')] }), null);
+    assert.equal(st.turn, 0);
+    assert.deepEqual(st.log.filter(e => e.t === 'skip').map(e => e.p), dir === 1 ? [1, 2, 3] : [3, 2, 1]);
+  }
+});
+
+test('bloqueios extras não pulam quem jogou, inclusive com só duas pessoas', () => {
+  const st = table([[R('skip'), B('skip'), R(1)], [B(1), B(2)]], R(5));
+  assert.equal(act(st, 0, { type: 'play', cards: [R('skip'), B('skip')] }), null);
+  assert.equal(st.turn, 0); assert.deepEqual(st.log.filter(e => e.t === 'skip').map(e => e.p), [1]);
+});
+
+test('bloqueios rejeitam primeira carta incompatível, duplicatas, misturas e opção desligada', () => {
+  const st = table([[R('skip'), B('skip'), R(1)], [B(1)], [G(2)]], R(5));
+  for (const cards of [[B('skip'), R('skip')], [R('skip'), R('skip')], [R('skip'), R(1)]]) unchanged(st, () => act(st, 0, { type: 'play', cards }));
+  st.rules.stackSkip = false;
+  unchanged(st, () => act(st, 0, { type: 'play', cards: [R('skip'), B('skip')] }));
+  assert.equal(play(st, 0, R('skip')), null); assert.equal(st.turn, 2);
+});
+
+test('bloqueios não escapam de compras pendentes e não juntam a carta recém-comprada à mão', () => {
+  const st = table([[R('skip'), B('skip'), R(1)], [B(1)], [G(2)]], R(5));
+  st.pending = 4;
+  unchanged(st, () => act(st, 0, { type: 'play', cards: [R('skip'), B('skip')] }));
+  st.pending = 0; st.phase = 'drawn'; st.drawn = R('skip');
+  unchanged(st, () => act(st, 0, { type: 'play', cards: [R('skip'), B('skip')] }));
+});
+
+test('bot acumula bloqueios e quem esvazia a mão com eles vence', () => {
+  const st = table([[R('skip'), B('skip')], [B(1)], [G(2)]], R(5));
+  const action = U.botAction(st, 'p0'); assert.deepEqual(action.cards, [R('skip'), B('skip')]);
+  assert.equal(act(st, 0, action), null); assert.equal(st.result.winner, 'p0');
+});
+
+test('não há batida com 9 antigo no descarte, na mão ou sob um bloqueio', () => {
+  for (const played of [R(1), R('skip'), R('rev'), W4]) {
+    const st = table([[played, G(9)], [B(1), B(2)], [G(2), G(3)]], R(5), { slap9: true });
+    st.deck = st.deck.filter(id => id !== R(9)); st.pile.unshift(R(9));
+    assert.equal(play(st, 0, played, { color: 'b' }), null); assert.equal(st.slap, null);
+    assert.equal(st.log.some(e => e.t === 'slapStart'), false);
+  }
+  const st = table([[R('skip'), B('skip'), R(1)], [B(1)], [G(2)]], R(9), { slap9: true });
+  assert.equal(act(st, 0, { type: 'play', cards: [R('skip'), B('skip')] }), null);
+  assert.equal(st.slap, null); assert.equal(st.turn, 0);
+});
+
+test('9 ao final de sequência vale dois mesmo se havia outro 9 antes da sequência', () => {
+  const st = table([[R(7), R(8), R(9), B(1)], [G(1), B(2)]], card('r', 9, 1), { sequence: true, slap9: true });
+  assert.equal(act(st, 0, { type: 'play', cards: [R(7), R(8), R(9)] }), null);
+  assert.equal(st.slap.penalty, 2);
+});
+
+test('aviso da mãozinha exige o 9 atual visível e o token da batida atual', () => {
+  const st = table([[R(9), R(1)], [B(1), B(2)]], R(5), { slap9: true });
+  play(st, 0, R(9)); const token = st.slap.token;
+  assert.equal(U.slapVisible(st, R(5), token), false);
+  assert.equal(U.slapVisible(st, R(9), token - 1), false);
+  assert.equal(U.slapVisible(st, R(9), token), true);
+  const start = st.log.find(e => e.t === 'slapStart'); assert.equal(start.card, R(9)); assert.equal(start.token, token);
+  st.pile.push(R(1)); assert.equal(U.slapVisible(st, R(9), token), false);
+  st.pile.pop(); st.rules.slap9 = false; assert.equal(U.slapVisible(st, R(9), token), false);
 });
 
 test('bot guarda carta recém-comprada com monte vazio para sair de ciclos', () => {
