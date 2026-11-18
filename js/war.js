@@ -24,7 +24,8 @@ const War = (() => {
   const SHAPES = ['circulo', 'quadrado', 'triangulo'];
   const CARDS = [...TERR.map((t, i) => ({ id: i, terr: t, shape: SHAPES[i % 3] })), { id: 42, terr: null, shape: 'curinga' }, { id: 43, terr: null, shape: 'curinga' }];
   // TABELA II: exércitos por troca (sequência de todas as trocas do jogo)
-  const tradeValue = n => (n < 5 ? 4 + 2 * n : 15 + 5 * (n - 5));
+  const isQuick = st => st?.mode === 'quick';
+  const tradeValue = (n, mode) => (n < 5 ? 4 + 2 * n : 15 + (mode === 'quick' ? 1 : 5) * (n - 5));
   // os 14 objetivos
   const OBJECTIVES = [
     { id: 0, kind: 'conts', conts: ['eu', 'oc'], plus: 1, text: 'Conquistar na totalidade a EUROPA, a OCEANIA e mais um terceiro continente à sua escolha.' },
@@ -38,6 +39,26 @@ const War = (() => {
     ...['azul', 'amarelo', 'vermelho', 'preto', 'branco', 'verde'].map((c, k) => ({ id: 8 + k, kind: 'destroy', color: c,
       text: `Destruir totalmente os exércitos ${COLORS.find(x => x.id === c).name.toUpperCase()}S. Se eles já foram destruídos por outro jogador, ou se você é o próprio exército ${COLORS.find(x => x.id === c).name.toLowerCase()}, o seu objetivo passa a ser conquistar 24 territórios.` })),
   ];
+  // As metas de expansão partem da distribuição inicial: ninguém recebe uma missão já cumprida.
+  const expansion = (fast = 12, normal = 18, gain = 3) => ({ kind: 'terr', fast, normal, gain });
+  const campaign = (fast = 4, normal = 7) => ({ kind: 'new', fast, normal });
+  const missions = [
+    ['Expansão imperial', 'Amplie suas fronteiras e sustente o território conquistado.', [expansion(14, 21, 4), campaign()]],
+    ['Linha de frente', 'Una suas posições em um grande bloco de territórios vizinhos.', [{ kind: 'connected', fast: 12, normal: 18, gain: 2 }, campaign()]],
+    ['Rede de fortalezas', 'Transforme suas posições em bases militares bem defendidas.', [{ kind: 'terr', fast: 8, normal: 12, min: 3 }, campaign()]],
+    ['Império intercontinental', 'Expanda sua influência por diferentes regiões do mundo.', [expansion(), { kind: 'presence', fast: 4, normal: 5, each: 1 }, campaign()]],
+    ['Potência regional', 'Consolide um continente e amplie seu domínio além dele.', [{ kind: 'continents', fast: 1, normal: 1 }, expansion(12, 18, 3), campaign()]],
+    ['Ponte do Atlântico', 'Controle os dois lados do Atlântico e a entrada da Europa.', [{ kind: 'keys', ids: ['brasil', 'argelia', 'portugal'] }, campaign()]],
+    ['Rota do Pacífico', 'Una as posições estratégicas do extremo norte e do Japão.', [{ kind: 'keys', ids: ['alasca', 'vladivostok', 'japao'] }, campaign()]],
+    ['Corredor das Américas', 'Abra uma rota contínua da América do Norte até a África.', [{ kind: 'keys', ids: ['mexico', 'venezuela', 'brasil', 'argelia'] }, campaign()]],
+    ['Campanha vitoriosa', 'Avance sobre novas terras sem abandonar sua expansão.', [campaign(7, 11), expansion(12, 18, 2)]],
+    ['Ofensiva relâmpago', 'Prepare uma ofensiva para conquistar vários territórios em uma única vez.', [{ kind: 'turn', fast: 3, normal: 5 }, campaign(5, 8)]],
+    ['Bases no mundo', 'Estabeleça bases em três continentes diferentes.', [{ kind: 'presence', fast: 3, normal: 3, each: 3, min: 2 }, campaign()]],
+    ['Dupla coroa', 'Consolide dois continentes completos sob a mesma bandeira.', [{ kind: 'continents', fast: 2, normal: 2 }, campaign()]],
+    ['Muralha estratégica', 'Construa uma rede conectada de posições reforçadas.', [{ kind: 'connected', fast: 7, normal: 11, min: 2 }, campaign()]],
+    ['Encruzilhada do mundo', 'Controle os acessos entre a África, a Europa e a Ásia.', [{ kind: 'keys', ids: ['egito', 'orientemedio', 'china'] }, campaign()]],
+  ];
+  missions.forEach(([name, brief, goals], i) => OBJECTIVES.push({ id: 14 + i, kind: 'mission', name, brief, goals }));
   const FALLBACK = 6; // "conquistar 24 territórios"
 
   // ---------- utilidades ----------
@@ -63,13 +84,57 @@ const War = (() => {
   // objetivo efetivo (o de destruir vira 24 territórios quando não dá mais para cumprir)
   function objectiveOf(st, p) {
     const o = OBJECTIVES[p.obj];
+    if (o.kind === 'mission') {
+      const initial = p.initialTerritories?.length ?? Math.floor(TERR.length / st.players.length);
+      const goals = o.goals.map(g => ({ ...g, n: g.ids?.length ?? Math.min(TERR.length, Math.max(g[isQuick(st) ? 'fast' : 'normal'], g.gain ? initial + g.gain : 0)) }));
+      return { ...o, goals, text: goals.map(goalLabel).join('; ') + '.' };
+    }
     if (o.kind !== 'destroy') return o;
     const target = st.players.find(q => q.color === o.color);
     if (!target || target.id === p.id || (target.out && target.outBy !== p.id)) return { ...OBJECTIVES[FALLBACK], from: o.id };
     return o;
   }
+  function goalLabel(g) {
+    if (g.kind === 'terr') return `Controlar ${g.n} territórios${g.min > 1 ? ` com pelo menos ${g.min} soldados em cada` : ''}`;
+    if (g.kind === 'connected') return `Controlar um bloco de ${g.n} territórios conectados${g.min > 1 ? `, cada um com pelo menos ${g.min} soldados` : ''}`;
+    if (g.kind === 'new') return `Conquistar ${g.n} territórios inéditos na campanha (os iniciais não contam)`;
+    if (g.kind === 'turn') return `Conquistar ${g.n} territórios em um único turno`;
+    if (g.kind === 'keys') return `Controlar ${g.ids.map(t => terrName[t]).join(', ')}`;
+    if (g.kind === 'presence') return `Manter ${g.each} território${g.each > 1 ? 's' : ''}${g.min > 1 ? ` com ${g.min}+ soldados cada` : ''} em cada um de ${g.n} continentes`;
+    return `Controlar ${g.n} continente${g.n > 1 ? 's' : ''} completo${g.n > 1 ? 's' : ''}`;
+  }
+  function largestBlock(st, pid, min = 1) {
+    const left = new Set(owned(st, pid).filter(t => st.armies[t] >= min)); let largest = 0;
+    while (left.size) {
+      const q = [left.values().next().value]; left.delete(q[0]);
+      for (let i = 0; i < q.length; i++) for (const t of ADJ[q[i]]) if (left.delete(t)) q.push(t);
+      largest = Math.max(largest, q.length);
+    }
+    return largest;
+  }
+  function newConquests(p) { return Math.max(0, (p.visited?.length || 0) - (p.initialTerritories?.length || 0)); }
+  function objectiveProgress(st, p) {
+    const o = objectiveOf(st, p), mine = owned(st, p.id);
+    const progress = (label, current, target) => ({ label, current, target, done: current >= target });
+    if (o.kind === 'mission') return o.goals.map(g => {
+      const value = g.kind === 'terr' ? mine.filter(t => st.armies[t] >= (g.min || 1)).length
+        : g.kind === 'connected' ? largestBlock(st, p.id, g.min)
+        : g.kind === 'new' ? newConquests(p)
+        : g.kind === 'turn' ? p.turnConquests || 0
+        : g.kind === 'keys' ? g.ids.filter(t => st.owner[t] === p.id).length
+        : g.kind === 'presence' ? CONTS.filter(c => inCont[c].filter(t => st.owner[t] === p.id && st.armies[t] >= (g.min || 1)).length >= g.each).length
+        : CONTS.filter(c => ownsCont(st, p.id, c)).length;
+      return progress(goalLabel(g), value, g.n);
+    });
+    if (o.kind === 'terr') return [progress(o.text, mine.filter(t => st.armies[t] >= o.min).length, o.n)];
+    if (o.kind === 'destroy') return [progress(`Eliminar o exército ${colorName(o.color).toLowerCase()}`, achieved(st, p) ? 1 : 0, 1)];
+    const rows = o.conts.map(c => progress(`Controlar ${CONT[c].name}`, inCont[c].filter(t => st.owner[t] === p.id).length, inCont[c].length));
+    if (o.plus) rows.push(progress('Controlar mais um continente completo', CONTS.filter(c => !o.conts.includes(c) && ownsCont(st, p.id, c)).length, 1));
+    return rows;
+  }
   function achieved(st, p) {
     const o = objectiveOf(st, p);
+    if (o.kind === 'mission') return !st.occupy && objectiveProgress(st, p).every(g => g.done);
     if (o.kind === 'destroy') { const t = st.players.find(q => q.color === o.color); return !!(t && t.out && t.outBy === p.id); }
     if (o.kind === 'terr') return owned(st, p.id).filter(t => st.armies[t] >= o.min).length >= o.n;
     if (!o.conts.every(c => ownsCont(st, p.id, c))) return false;
@@ -83,10 +148,10 @@ const War = (() => {
     const used = new Set(room.players.map(p => p.seat).filter(v => v != null));
     const players = room.players.map(p => {
       let c = p.seat; if (c == null || c < 0 || c > 5) { c = [0, 1, 2, 3, 4, 5].find(i => !used.has(i)); used.add(c); }
-      return { id: p.id, color: COLORS[c].id, cards: [], out: false, obj: null, battleStats: emptyBattleStats() };
+      return { id: p.id, color: COLORS[c].id, cards: [], out: false, obj: null, battleStats: emptyBattleStats(), initialTerritories: [], visited: [], turnConquests: 0 };
     });
     const st = {
-      gameId: 'w' + Date.now().toString(36) + rnd(1e6).toString(36),
+      gameId: 'w' + Date.now().toString(36) + rnd(1e6).toString(36), mode: s.warMode === 'quick' ? 'quick' : 'classic',
       players: shuffle(players), owner: {}, armies: {}, deck: [], used: [], trades: 0,
       turn: 0, round: 1, phase: 'place', pool: null, conquered: false, occupy: null, moved: {},
       turnMs: (s.turnSec ?? 120) * 1000, deadline: 0, afk: null,
@@ -94,14 +159,15 @@ const War = (() => {
     };
     // objetivos: tira os de destruir cores que não estão na partida
     const colorsIn = new Set(st.players.map(p => p.color));
-    const objs = shuffle(OBJECTIVES.filter(o => o.kind !== 'destroy' || colorsIn.has(o.color)).map(o => o.id));
+    const objs = shuffle(OBJECTIVES.filter(o => isQuick(st) ? o.kind === 'mission' : o.kind !== 'destroy' || colorsIn.has(o.color)).map(o => o.id));
     st.players.forEach(p => { p.obj = objs.pop(); });
     // sorteio dos territórios: cartas sem curingas, distribuídas em sentido horário
     const deal = shuffle(TERR.slice()); let k = 0;
     deal.forEach(t => { st.owner[t] = st.players[k].id; st.armies[t] = 1; k = (k + 1) % st.players.length; });
+    st.players.forEach(p => { p.initialTerritories = owned(st, p.id); p.visited = [...p.initialTerritories]; });
     st.turn = k % st.players.length; // começa quem vem depois de quem recebeu a última carta
     st.deck = shuffle(CARDS.map(c => c.id));
-    log(st, `🌍 A guerra começou! ${st.players.length} exércitos, ${TERR.length} territórios sorteados. Cada um recebeu um objetivo secreto.`);
+    log(st, `🌍 A guerra começou${isQuick(st) ? ' no Modo Rápido' : ''}! ${st.players.length} exércitos, ${TERR.length} territórios sorteados. Cada um recebeu um objetivo secreto.`);
     startTurn(st);
     return st;
   }
@@ -109,6 +175,7 @@ const War = (() => {
   // ---------- turno ----------
   function startTurn(st) {
     const p = cur(st);
+    p.turnConquests = 0;
     st.phase = 'place'; st.conquered = false; st.occupy = null; st.moved = {}; st.lastBattle = null;
     const n = owned(st, p.id).length;
     const pool = { free: Math.max(3, Math.floor(n / 2)), cont: {} };
@@ -134,7 +201,7 @@ const War = (() => {
     if (!st.deck.length) { st.deck = shuffle(st.used); st.used = []; if (st.deck.length) log(st, '🔁 O monte de cartas acabou: as cartas trocadas foram embaralhadas de novo.'); }
     return st.deck.length ? st.deck.pop() : null;
   }
-  // relógio da vez: cada ação de quem joga reinicia; quando zera, o jogo joga por ele
+  // Relógio por ação: cada ação reinicia o prazo; quando zera, joga pelo ausente.
   function arm(st, fresh, auto) {
     if (!st.turnMs || st.result) { st.deadline = 0; return; }
     if (fresh) st.afk = null;
@@ -151,8 +218,8 @@ const War = (() => {
     const uniq = new Set(rest).size;
     return uniq === 1 || uniq === rest.length; // iguais ou todas diferentes (o curinga completa)
   }
-  function tradeReward(trades, cards = []) {
-    const base = tradeValue(trades), selected = cards.map(id => CARDS[id]);
+  function tradeReward(trades, cards = [], mode) {
+    const base = tradeValue(trades, mode), selected = cards.map(id => CARDS[id]);
     const first = selected[0];
     const sameContinent = selected.length === 3 && new Set(cards).size === 3 && first?.terr
       && selected.every(c => c?.terr && c.shape === first.shape && contOf[c.terr] === contOf[first.terr]);
@@ -165,7 +232,7 @@ const War = (() => {
     function choose(size, start = 0, picked = []) {
       if (picked.length === size) {
         if (!validSet(picked)) return;
-        const score = tradeReward(st.trades, picked).bonus + picked.filter(id => CARDS[id].terr && st.owner[CARDS[id].terr] === p.id).length * 2 - picked.filter(id => CARDS[id].shape === 'curinga').length;
+        const score = tradeReward(st.trades, picked, st.mode).bonus + picked.filter(id => CARDS[id].terr && st.owner[CARDS[id].terr] === p.id).length * 2 - picked.filter(id => CARDS[id].shape === 'curinga').length;
         if (score > bestScore) { best = picked; bestScore = score; }
         return;
       }
@@ -195,11 +262,15 @@ const War = (() => {
     log(st, `⚔️ ${terrName[from]} → ${terrName[to]}: ataque [${a.join(' ')}] × defesa [${d.join(' ')}] — ataque perde ${lossA}, defesa perde ${lossD}.`);
     if (conquered) {
       ats.conquests++;
-      st.owner[to] = att; st.conquered = true;
+      ap.turnConquests = (ap.turnConquests || 0) + 1;
+      const firstConquest = !ap.visited?.includes(to);
+      if (firstConquest) (ap.visited ||= []).push(to);
+      st.owner[to] = att;
+      if (!isQuick(st) || firstConquest) st.conquered = true;
       st.occupy = { from, to, max: Math.min(n - lossA, st.armies[from] - 1) };
       st.occupy.max = Math.max(1, st.occupy.max);
       log(st, `🏴 ${nameOf(att)} conquistou ${terrName[to]}!`);
-      ev(st, { type: 'conquer', pid: att, from, to, def });
+      ev(st, { type: 'conquer', pid: att, from, to, def, firstConquest });
       const dp = pl(st, def);
       if (!owned(st, def).length) eliminate(st, dp, pl(st, att));
     }
@@ -254,7 +325,7 @@ const War = (() => {
         const cards = (a.cards || []).map(Number);
         if (![3, 5].includes(cards.length) || new Set(cards).size !== cards.length || !cards.every(c => p.cards.includes(c))) return 'Escolha 3 ou 5 cartas suas.';
         if (!validSet(cards)) return 'Troque 3 figuras iguais ou diferentes, ou 5 cartas com o mesmo símbolo (sem curingas).';
-        const reward = tradeReward(st.trades, cards), v = reward.total; st.trades++;
+        const reward = tradeReward(st.trades, cards, st.mode), v = reward.total; st.trades++;
         p.cards = p.cards.filter(c => !cards.includes(c)); st.used.push(...cards);
         st.pool.free += v;
         const bonus = [];
@@ -342,6 +413,13 @@ const War = (() => {
   // continente-alvo: o do objetivo que estiver mais perto; senão o de melhor proporção
   function targetConts(st, p) {
     const o = objectiveOf(st, p), ratio = c => inCont[c].filter(t => st.owner[t] === p.id).length / inCont[c].length;
+    if (o.kind === 'mission') {
+      const keys = o.goals.filter(g => g.kind === 'keys').flatMap(g => g.ids).filter(t => st.owner[t] !== p.id);
+      if (keys.length) return [...new Set(keys.map(t => contOf[t]))];
+      const presence = o.goals.find(g => g.kind === 'presence');
+      if (presence) return CONTS.filter(c => inCont[c].filter(t => st.owner[t] === p.id && st.armies[t] >= (presence.min || 1)).length < presence.each)
+        .sort((a, b) => ratio(b) - ratio(a));
+    }
     if (o.kind === 'conts') {
       const list = [...o.conts]; if (o.plus) list.push(CONTS.filter(c => !o.conts.includes(c)).sort((a, b) => ratio(b) - ratio(a))[0]);
       return list.sort((a, b) => ratio(b) - ratio(a));
@@ -355,6 +433,8 @@ const War = (() => {
     for (const n of en) {
       const g = goals.indexOf(contOf[n]); s += g === 0 ? 4 : g === 1 ? 2.5 : g >= 0 ? 1.5 : .6;
       if (target && st.owner[n] === target) s += 3;
+      if (isQuick(st) && !p.visited?.includes(n)) s += 2;
+      if (o.kind === 'mission' && o.goals.some(g => g.kind === 'keys' && g.ids.includes(n))) s += 5;
       s += Math.max(0, 3 - st.armies[n]) * .4;
     }
     if (goals.includes(contOf[t])) s += 1.5;
@@ -369,6 +449,12 @@ const War = (() => {
       if (set && (p.cards.length >= 5 || p.cards.length >= 3)) return { type: 'trade', cards: set };
       const contLeft = Object.keys(st.pool.cont).find(c => st.pool.cont[c]);
       const cand = contLeft ? mine.filter(t => contOf[t] === contLeft) : mine;
+      const mission = objectiveOf(st, p), progress = mission.goals ? objectiveProgress(st, p) : [];
+      const fortify = mission.goals?.find((g, i) => g.min > 1 && !progress[i].done);
+      if (fortify) {
+        const t = cand.filter(t => st.armies[t] < fortify.min).sort((a, b) => scoreFront(st, p, b, goals) - scoreFront(st, p, a, goals))[0];
+        if (t) return { type: 'place', t, n: Math.min(fortify.min - st.armies[t], (contLeft ? st.pool.cont[contLeft] : 0) + st.pool.free) };
+      }
       let best = cand[0], bs = -Infinity;
       for (const t of cand) { const s = scoreFront(st, p, t, goals); if (s > bs) { bs = s; best = t; } }
       const n = contLeft && !st.pool.free ? st.pool.cont[contLeft] : contLeft ? st.pool.cont[contLeft] : Math.min(st.pool.free, Math.max(1, Math.ceil(st.pool.free / 2)));
@@ -384,6 +470,8 @@ const War = (() => {
           const a = st.armies[f] - 1, d = st.armies[t];
           if (a < d + 1 && !(a >= 3 && d <= 2)) continue;
           let s = a / d + (goals.indexOf(contOf[t]) === 0 ? 1.5 : goals.includes(contOf[t]) ? .7 : 0) + (target && st.owner[t] === target ? 2 : 0);
+          if (isQuick(st) && !p.visited?.includes(t)) s += 1.5;
+          if (o.kind === 'mission' && o.goals.some(g => g.kind === 'keys' && g.ids.includes(t))) s += 4;
           if (inCont[contOf[t]].every(x => x === t || st.owner[x] === pid)) s += 2; // fecha um continente
           if (s > bs) { bs = s; best = { type: 'attack', from: f, to: t, n: Math.min(3, a) }; }
         }
@@ -427,7 +515,7 @@ const War = (() => {
   }
 
   return {
-    COLORS, CARDS, OBJECTIVES, SHAPES, newGame, act, viewFor, botAction, botDelay, timeout, objectiveOf, achieved, tradeValue, tradeReward, validSet,
+    COLORS, CARDS, OBJECTIVES, SHAPES, newGame, act, viewFor, botAction, botDelay, timeout, objectiveOf, objectiveProgress, achieved, tradeValue, tradeReward, validSet,
     owned, ownsCont, contOf, terrName, inCont, poolTotal, setNameResolver: f => (nameOf = f),
   };
 })();

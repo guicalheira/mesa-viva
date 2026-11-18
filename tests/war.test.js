@@ -21,6 +21,143 @@ function fixture() {
 }
 const plain = data => JSON.parse(JSON.stringify(data));
 
+function quickFixture() {
+  const f = fixture(); f.st.mode = 'quick';
+  f.st.players.forEach(p => { p.initialTerritories = f.War.owned(f.st, p.id); p.visited = [...p.initialTerritories]; });
+  return f;
+}
+
+function conquer(f, to = 'venezuela') {
+  f.st.armies.brasil = 12; f.st.armies[to] = 1; f.st.owner[to] = 'p1'; f.roll([6, 1]);
+  assert.equal(f.War.act(f.st, 'p0', { type: 'attack', from: 'brasil', to, n: 1 }), null);
+  assert.equal(f.War.act(f.st, 'p0', { type: 'occupy', n: 1 }), null);
+}
+
+test('Modo Rápido sobe as trocas de um em um após 15 e mantém os bônus existentes', () => {
+  const { War, st } = quickFixture();
+  assert.deepEqual(Array.from({ length: 10 }, (_, n) => War.tradeValue(n, 'quick')), [4, 6, 8, 10, 12, 15, 16, 17, 18, 19]);
+  assert.equal(War.tradeValue(7), 25);
+  assert.equal(War.tradeReward(6, [0, 3, 6], 'quick').total, 24);
+  st.phase = 'place'; st.trades = 6; const p = st.players.find(p => p.id === 'p0'); p.cards = [0, 1, 2];
+  const before = st.pool.free;
+  assert.equal(War.act(st, 'p0', { type: 'trade', cards: p.cards.slice() }), null);
+  assert.equal(st.pool.free, before + 16); assert.equal(st.trades, 7);
+});
+
+test('conquista inédita dá uma carta; reconquista não dá, mesmo após salvar e retomar', () => {
+  const f = quickFixture(), p = f.st.players.find(p => p.id === 'p0');
+  conquer(f); assert.equal(f.st.conquered, true);
+  assert.equal(f.War.act(f.st, 'p0', { type: 'endTurn' }), null); assert.equal(p.cards.length, 1);
+  f.st = plain(f.st); f.st.turn = f.st.players.findIndex(p => p.id === 'p0'); f.st.phase = 'attack'; f.st.conquered = false;
+  const resumed = f.st.players.find(p => p.id === 'p0');
+  conquer(f); assert.equal(f.st.conquered, false);
+  assert.equal(f.War.act(f.st, 'p0', { type: 'endTurn' }), null); assert.equal(resumed.cards.length, 1);
+});
+
+test('território inicial retomado não rende carta; uma conquista inédita posterior rende', () => {
+  const f = quickFixture(), p = f.st.players.find(p => p.id === 'p0');
+  p.initialTerritories.push('venezuela'); p.visited.push('venezuela');
+  conquer(f); assert.equal(f.st.conquered, false);
+  p.visited = p.visited.filter(t => t !== 'peru'); p.initialTerritories = p.initialTerritories.filter(t => t !== 'peru');
+  conquer(f, 'peru'); assert.equal(f.st.conquered, true);
+  assert.equal(f.War.act(f.st, 'p0', { type: 'endTurn' }), null); assert.equal(p.cards.length, 1);
+});
+
+test('histórico é individual e várias conquistas novas rendem no máximo uma carta por turno', () => {
+  const f = quickFixture(), p = f.st.players.find(p => p.id === 'p0');
+  f.st.players.find(p => p.id === 'p1').visited = Object.keys(f.st.owner);
+  p.visited = p.visited.filter(t => t !== 'peru'); p.initialTerritories = p.initialTerritories.filter(t => t !== 'peru');
+  conquer(f); conquer(f, 'peru');
+  assert.equal(p.turnConquests, 2); assert.equal(f.st.conquered, true);
+  assert.equal(f.War.act(f.st, 'p0', { type: 'endTurn' }), null); assert.equal(p.cards.length, 1);
+});
+
+test('Clássico continua dando carta por reconquista e estados antigos mantêm as regras', () => {
+  const f = quickFixture(); delete f.st.mode;
+  const p = f.st.players.find(p => p.id === 'p0'); p.visited.push('venezuela');
+  conquer(f); assert.equal(f.st.conquered, true);
+  assert.equal(f.War.act(f.st, 'p0', { type: 'endTurn' }), null); assert.equal(p.cards.length, 1);
+});
+
+test('novas missões são distintas, viáveis para 2 a 6 jogadores e nunca começam cumpridas', () => {
+  const { War } = fixture();
+  const missions = War.OBJECTIVES.filter(o => o.kind === 'mission'); assert.equal(missions.length, 14);
+  for (const mode of ['quick', 'classic']) for (let count = 2; count <= 6; count++) {
+    const st = War.newGame({ settings: { warMode: mode, turnSec: 0 }, players: Array.from({ length: count }, (_, i) => ({ id: 'p' + i, seat: i })) });
+    assert.equal(st.turnMs, 0); assert.equal(st.matchDeadline, undefined, 'não existe teto de duração');
+    assert.equal(new Set(st.players.map(p => p.obj)).size, count);
+    for (const p of st.players) {
+      if (mode === 'quick') assert.equal(War.OBJECTIVES[p.obj].kind, 'mission');
+      for (const o of missions) {
+        p.obj = o.id;
+        assert.equal(War.achieved(st, p), false, `${count} jogadores: ${o.name}`);
+        const effective = War.objectiveOf(st, p);
+        assert.ok(effective.text.length > 20);
+        assert.ok(effective.goals.every(g => Number.isFinite(g.n) && g.n > 0 && g.n <= 42));
+        st.owner = Object.fromEntries(Object.keys(st.owner).map(t => [t, p.id]));
+        st.armies = Object.fromEntries(Object.keys(st.armies).map(t => [t, 3]));
+        p.visited = Object.keys(st.owner); p.turnConquests = 6;
+        assert.equal(War.achieved(st, p), true, `missão possível: ${o.name}`);
+        // Restaura uma distribuição inicial antes de experimentar a próxima missão.
+        st.players.forEach(q => q.initialTerritories.forEach(t => { st.owner[t] = q.id; st.armies[t] = 1; }));
+        p.visited = [...p.initialTerritories]; p.turnConquests = 0;
+      }
+    }
+  }
+});
+
+test('missão de rota exige todos os territórios atuais e a ocupação concluída', () => {
+  const f = quickFixture(), p = f.st.players.find(p => p.id === 'p0'); p.obj = 19;
+  p.visited = [...new Set([...p.initialTerritories, ...Object.keys(f.st.owner).filter(t => !p.initialTerritories.includes(t)).slice(0, 4)])];
+  for (const t of ['brasil', 'argelia', 'portugal']) f.st.owner[t] = 'p0';
+  assert.equal(f.War.achieved(f.st, p), true);
+  f.st.occupy = { from: 'brasil', to: 'argelia', max: 1 }; assert.equal(f.War.achieved(f.st, p), false);
+  f.st.occupy = null; f.st.owner.portugal = 'p1'; assert.equal(f.War.achieved(f.st, p), false);
+});
+
+test('blocos conectados não somam territórios isolados e fortalezas exigem guarnição', () => {
+  const f = quickFixture(), p = f.st.players.find(p => p.id === 'p0'); p.obj = 26;
+  for (const t of Object.keys(f.st.owner)) { f.st.owner[t] = 'p1'; f.st.armies[t] = 1; }
+  const chain = ['brasil', 'argelia', 'portugal', 'inglaterra', 'islandia', 'groenlandia', 'labrador'];
+  chain.forEach(t => { f.st.owner[t] = 'p0'; f.st.armies[t] = 2; });
+  p.visited = [...new Set([...p.initialTerritories, ...Object.keys(f.st.owner)])];
+  assert.equal(f.War.achieved(f.st, p), true);
+  f.st.armies.portugal = 1; assert.equal(f.War.achieved(f.st, p), false);
+  f.st.armies.portugal = 2; f.st.owner.islandia = 'p1'; f.st.owner.japao = 'p0'; f.st.armies.japao = 2;
+  assert.equal(f.War.objectiveProgress(f.st, p)[0].current, 4);
+});
+
+test('vitória das novas missões é reconhecida pelo motor e objetivos alheios seguem secretos', () => {
+  const f = quickFixture(), p = f.st.players.find(p => p.id === 'p0'); p.obj = 19;
+  p.visited = Object.keys(f.st.owner); ['brasil', 'argelia', 'portugal'].forEach(t => f.st.owner[t] = 'p0');
+  assert.equal(f.War.act(f.st, 'p0', { type: 'endAttack' }), null);
+  assert.equal(f.st.result.winner, 'p0'); assert.equal(f.st.result.obj, 19);
+  const fresh = quickFixture(), enemy = fresh.War.viewFor(fresh.st, 'p0').players.find(p => p.id === 'p1');
+  assert.equal(enemy.obj, null);
+});
+
+test('bases em três continentes exigem três territórios guarnecidos em cada um', () => {
+  const { War, st } = quickFixture(), p = st.players.find(p => p.id === 'p0'); p.obj = 24;
+  Object.keys(st.owner).forEach(t => { st.owner[t] = 'p1'; st.armies[t] = 2; });
+  const bases = ['na', 'sa', 'eu'].flatMap(c => War.inCont[c].slice(0, 3));
+  bases.forEach(t => st.owner[t] = 'p0'); p.visited = Object.keys(st.owner);
+  assert.equal(War.achieved(st, p), true);
+  st.armies[bases[0]] = 1; assert.equal(War.achieved(st, p), false);
+  assert.equal(War.objectiveProgress(st, p)[0].current, 2);
+});
+
+test('ofensiva conta conquistas da mesma vez e zera na vez seguinte', () => {
+  const { War, st } = quickFixture(), p = st.players.find(p => p.id === 'p0'); p.obj = 23;
+  p.visited = Object.keys(st.owner); p.turnConquests = 2;
+  assert.equal(War.achieved(st, p), false);
+  p.turnConquests = 3; assert.equal(War.achieved(st, p), true);
+  p.turnConquests = 2;
+  for (let i = 0; i < st.players.length; i++) {
+    st.phase = 'move'; assert.equal(War.act(st, st.players[st.turn].id, { type: 'endTurn' }), null);
+  }
+  assert.equal(p.turnConquests, 0); assert.equal(War.achieved(st, p), false);
+});
+
 test('cada comparação é contada, incluindo empates a favor da defesa', () => {
   const { st, roll, attack } = fixture();
   roll([6, 5, 2, 6, 3, 1]); assert.equal(attack(3), null);

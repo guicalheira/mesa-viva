@@ -295,7 +295,9 @@ const UI = (() => {
             <label class="chk"><input type="checkbox" id="set-swap" ${room.settings.swap !== false ? 'checked' : ''} ${host ? '' : 'disabled'}> 🔄 Trocar até 2 cartas por rodada com o monte</label>
             <label class="chk"><input type="checkbox" id="set-reboot" ${room.settings.reboot ? 'checked' : ''} ${host ? '' : 'disabled'}> ♻️ Reiniciar o Universo (regra da casa)</label>` : ''}
           ${room.game === 'magnata' ? `<label>Mesa</label><div class="hats">${MAGNATA_TABLES.map(c => `<button class="charpick hatpick ${(room.settings.table || 'wood') === c.id ? 'on' : ''}" data-mtable="${c.id}" ${host ? '' : 'disabled'} title="${esc(c.name)}"><span>${c.icon}</span><small>${esc(c.name)}</small></button>`).join('')}</div>` : ''}
-          ${room.game === 'war' ? `<label>Tempo por ação<select id="set-turn" ${host ? '' : 'disabled'}>${[[60, '1 minuto'], [90, '1 min 30 s (padrão)'], [120, '2 minutos'], [180, '3 minutos'], [0, 'Sem limite']].map(([v, l]) => `<option value="${v}" ${(room.settings.turnSec ?? 90) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
+          ${room.game === 'war' ? `<label>Regras da campanha<select id="set-war-mode" ${host ? '' : 'disabled'}>${[['quick', 'Modo Rápido · conquistas inéditas'], ['classic', 'Clássico · regras tradicionais']].map(([v, l]) => `<option value="${v}" ${(room.settings.warMode || 'classic') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+          <p class="war-mode-description">${room.settings.warMode === 'quick' ? 'Trocas: 4, 6, 8, 10, 12, 15, 16, 17… · Cartas só por territórios inéditos para você · 14 novas missões.' : 'Trocas tradicionais e cartas por qualquer conquista. Objetivos clássicos e 14 novas missões.'}</p>
+          <label>Tempo por ação<select id="set-turn" ${host ? '' : 'disabled'}>${[[60, '1 minuto'], [90, '1 min 30 s (padrão)'], [120, '2 minutos'], [180, '3 minutos'], [0, 'Sem limite']].map(([v, l]) => `<option value="${v}" ${(room.settings.turnSec ?? 90) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
           ${room.game === 'patrimonio' ? PatUI.lobbyRules(room, host) : ''}
           ${room.game === 'ultima' ? UltUI.lobbyRules(room, host) : ''}
           ${room.game === 'arq' ? `<label>Mapa<select id="set-arqmap" ${host ? '' : 'disabled'}>${[['random', 'Aleatório (só as regras de número)'], ['balanced', 'Equilibrado (recursos e números bem distribuídos)']].map(([v, l]) => `<option value="${v}" ${(room.settings.mapMode || 'random') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
@@ -365,6 +367,7 @@ const UI = (() => {
         $('#set-arqmap').onchange = e => Room.send({ t: 'settings', settings: { mapMode: e.target.value } });
         $('#set-arqturn').onchange = e => Room.send({ t: 'settings', settings: { arqTurnSec: +e.target.value } });
       } else if (room.game === 'war') {
+        $('#set-war-mode').onchange = e => Room.send({ t: 'settings', settings: { warMode: e.target.value } });
         $('#set-turn').onchange = e => Room.send({ t: 'settings', settings: { turnSec: +e.target.value } });
       } else if (room.game === 'conjura') {
         $('#set-variant').onchange = e => Room.send({ t: 'settings', settings: { variant: e.target.value } });

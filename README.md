@@ -34,6 +34,10 @@ Use **Jogar sequência** para marcar as cartas, **Jogar bloqueios** para juntar 
 
 Para adicionar um novo jogo: crie um motor como `Magnata` (`newGame`, `act`, `botAction`), adicione ao `GAME_LIBRARY` com `ready: true` e uma função de render em `ui.js`.
 
+**Supremacia — Modo Rápido:** selecionado por padrão nas salas novas, com opção Clássico no lobby. As trocas globais valem 4, 6, 8, 10, 12, 15, 16, 17… soldados: depois de 15, sobem de um em um. Cada jogador só recebe carta ao conquistar um território que nunca foi seu; os territórios iniciais também entram nesse histórico. No máximo uma carta por turno. Os bônus continentais e de cinco cartas continuam valendo. A vitória acontece ao cumprir o objetivo secreto, sem teto de duração. O relógio por ação mantém o funcionamento anterior.
+
+Há 14 novas missões com progresso visível apenas para o dono: expansão, blocos conectados, fortalezas, presença em vários continentes, rotas estratégicas e ofensivas em um turno. As metas de expansão consideram a distribuição inicial e todas exigem conquistas inéditas. O Modo Rápido usa esse novo baralho; o Clássico mistura as novas missões aos objetivos tradicionais. Partidas antigas mantêm suas regras e objetivos.
+
 Sons de dado do Ludo (`assets/dice_*.ogg`): pacote *Casino Audio* da [Kenney](https://kenney.nl/assets/casino-audio), licença CC0.
 Sons do soco na mesa e do feltro do Dominó 2 (`assets/k_*.ogg`): pacote *Impact Sounds* da [Kenney](https://kenney.nl/assets/impact-sounds), licença CC0.
 Sons das pedras do Dominó 2 (`assets/d_*.mp3`): gravações reais do [Freesound](https://freesound.org), licença CC0 — [Domino pieces 1](https://freesound.org/s/329099/) e [Domino pieces hit](https://freesound.org/s/329098/) (Macif), [domino stone on the table](https://freesound.org/s/197867/) e [domino shuffle](https://freesound.org/s/197868/) (Millavsb), [domino_draw](https://freesound.org/s/705348/) (UnycodeAdmin). Ambiente do bar: [Crowded Bar - Ambient Loop](https://freesound.org/s/397569/) (gagehurley78). Vidro quebrando: [Bottle Smash](https://freesound.org/s/401619/) (Roxis_Boy) e [Breaking Glass #3](https://freesound.org/s/233605/) (abstraktgeneriert).

@@ -19,19 +19,27 @@ const WarUI = (() => {
   }
   function confirmAction(a, title, detail) {
     if (blocked()) return;
-    const key = stateKey(Room.room);
-    const m = UI.modal(`<div class="war-confirm"><span class="war-eyebrow">CONFIRMAR ORDEM</span><h2 id="war-confirm-title">${esc(title)}</h2>
-      <p id="war-confirm-detail">${esc(detail)}</p><div class="war-confirm-actions"><button class="btn" id="war-confirm-no">Não, voltar</button><button class="btn primary" id="war-confirm-yes">Sim, confirmar</button></div></div>`);
+    const key = stateKey(Room.room), trigger = document.activeElement, ending = a.type === 'endTurn';
+    const m = UI.modal(`<div class="war-confirm"><div class="war-confirm-heading"><span class="war-confirm-icon">${icon(ending ? 'flag' : 'troops')}</span><span class="war-eyebrow">${ending ? 'PASSAR A VEZ' : 'PRÓXIMA ETAPA'}</span></div><h2 id="war-confirm-title">${esc(title)}</h2>
+      <p id="war-confirm-detail">${esc(detail)}</p><div class="war-confirm-next">${icon(ending ? 'clock' : 'troops')}<span>${ending ? 'O próximo comandante assume a campanha.' : 'A seguir: reposicione seus soldados.'}</span></div>
+      <div class="war-confirm-actions"><button type="button" class="war-confirm-button secondary" id="war-confirm-no">Continuar jogando</button><button type="button" class="war-confirm-button primary" id="war-confirm-yes">${ending ? 'Encerrar turno' : 'Ir para deslocamentos'}<span aria-hidden="true">→</span></button></div></div>`);
     m.setAttribute('role', 'alertdialog'); m.setAttribute('aria-modal', 'true');
     m.setAttribute('aria-labelledby', 'war-confirm-title'); m.setAttribute('aria-describedby', 'war-confirm-detail');
-    const cancel = () => UI.closeModal();
+    const cancel = () => { UI.closeModal(); if (trigger?.isConnected) trigger.focus(); };
     $('#war-confirm-no', m).onclick = cancel;
     $('#war-confirm-yes', m).onclick = () => {
       UI.closeModal();
       if (!Room.room?.state || key !== stateKey(Room.room) || blocked()) return UI.toast('A partida avançou. Confira o mapa e escolha sua ação novamente.');
       sendAction(a);
     };
-    m.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); cancel(); } });
+    m.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+      if (e.key === 'Tab') {
+        const buttons = [...m.querySelectorAll('button')], first = buttons[0], last = buttons[buttons.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    });
     $('#war-confirm-no', m).focus();
   }
   const ICONS = {
@@ -126,7 +134,7 @@ const WarUI = (() => {
     } else if (st.occupy) txt = `<span>${icon('flag')} Conquistou <b>${esc(War.terrName[st.occupy.to])}</b>! Quantos exércitos entram?</span>`;
     else if (st.phase === 'attack') txt = `<span>${icon('attack')} <b>Ataque</b>: escolha um território seu com 2+ exércitos e depois um vizinho inimigo.</span>`;
     else txt = `<span>${icon('troops')} <b>Deslocamento</b>: mova exércitos entre territórios vizinhos seus (cada um se move uma vez).</span>`;
-    $('#war-table .war-banner').innerHTML = `${txt}${st.deadline && !st.result ? ' <small id="war-secs" class="war-secs"></small>' : ''}`;
+    $('#war-table .war-banner').innerHTML = `${st.mode === 'quick' ? '<span class="war-mode-badge">Modo Rápido</span>' : ''}${txt}${st.deadline && !st.result ? ' <small id="war-secs" class="war-secs" title="Tempo restante para agir"></small>' : ''}`;
   }
   const phaseName = st => st.phase === 'place' ? 'posicionando' : st.phase === 'attack' ? (st.occupy ? 'ocupando' : 'atacando') : st.phase === 'move' ? 'deslocando' : '';
 
@@ -199,7 +207,7 @@ const WarUI = (() => {
         amount = n;
         bar = territorySelect(st, sel, War.owned(st, Room.myId), 'war-source', '1. Território que recebe') + troopSlider(n, available, 'place');
         bar += `<button class="chip" id="war-all" ${available < 1 ? 'disabled' : ''}>Todos (${available})</button><button class="chip go" id="war-place" ${!sel || available < 1 || me.cards.length >= 5 ? 'disabled' : ''}>Adicionar ${n} soldado${n === 1 ? '' : 's'}</button>`;
-        if (me.cards.length >= 3) bar += `<button class="chip" data-open="cards">Trocar cartas · +${War.tradeValue(st.trades)}</button>`;
+        if (me.cards.length >= 3) bar += `<button class="chip" data-open="cards">Trocar cartas · +${War.tradeValue(st.trades, st.mode)}</button>`;
         hint = me.cards.length >= 5 ? 'Troca obrigatória: troque 3 cartas ou 5 do mesmo símbolo antes de adicionar soldados.' : `${War.poolTotal(st.pool)} soldados na reserva. Escolha o território, a quantidade e clique em Adicionar.`;
       } else if (st.occupy) {
         const o = st.occupy, key = o.from + o.to + o.max;
@@ -257,9 +265,9 @@ const WarUI = (() => {
     $('#war-place', B)?.addEventListener('click', () => sendAction({ type: 'place', t: sel, n: amount }));
     $('#war-attack', B)?.addEventListener('click', () => sendAction({ type: 'attack', from: sel, to: target, n: dice }));
     $('#war-occupy', B)?.addEventListener('click', () => sendAction({ type: 'occupy', n: moveN }));
-    $('#war-end-attack', B)?.addEventListener('click', () => confirmAction({ type: 'endAttack' }, 'Encerrar ataques, certeza?', 'Você passará para a etapa de mover tropas e não poderá atacar novamente neste turno.'));
+    $('#war-end-attack', B)?.addEventListener('click', () => confirmAction({ type: 'endAttack' }, 'Encerrar seus ataques?', 'Ao avançar, você poderá mover suas tropas. Novos ataques ficam para o próximo turno.'));
     $('#war-move', B)?.addEventListener('click', () => sendAction({ type: 'move', from: sel, to: target, n: moveN }));
-    $('#war-end-turn', B)?.addEventListener('click', () => confirmAction({ type: 'endTurn' }, 'Encerrar vez, certeza?', `Sua vez será concluída${st.conquered ? ' e você receberá uma carta pela conquista' : ''}. Deseja continuar?`));
+    $('#war-end-turn', B)?.addEventListener('click', () => confirmAction({ type: 'endTurn' }, 'Tudo pronto para passar a vez?', `Você já pode encerrar seu turno.${st.conquered ? ' Uma carta de território será adicionada à sua mão.' : st.mode === 'quick' ? ' Sem conquista inédita neste turno, você não recebe carta.' : ''}`));
   }
 
   // ---------- ferramentas e gaveta ----------
@@ -346,10 +354,10 @@ const WarUI = (() => {
       // Só uma alteração real na mão reconstrói as cartas; selecionar não recria a janela.
       if (handKey !== key) {
         handKey = key;
-        $('.wcards', m).innerHTML = me.cards.length ? me.cards.map(id => cardHTML(id, cardSel.includes(id))).join('') : '<p class="muted">Conquiste pelo menos um território para ganhar uma carta no fim do turno.</p>';
+        $('.wcards', m).innerHTML = me.cards.length ? me.cards.map(id => cardHTML(id, cardSel.includes(id))).join('') : `<p class="muted">${st.mode === 'quick' ? 'Conquiste um território que nunca foi seu para ganhar uma carta. Territórios iniciais e reconquistas não contam.' : 'Conquiste pelo menos um território para ganhar uma carta no fim do turno.'}</p>`;
       }
       const canTrade = !blocked() && !st.result && st.players[st.turn].id === Room.myId && st.phase === 'place';
-      const ok = War.validSet(cardSel), reward = War.tradeReward(st.trades, cardSel);
+      const ok = War.validSet(cardSel), reward = War.tradeReward(st.trades, cardSel, st.mode);
       const five = ok && cardSel.length === 5;
       const own = cardSel.filter(c => War.CARDS[c].terr && st.owner[War.CARDS[c].terr] === Room.myId).length;
       $$('[data-card]', m).forEach(b => {
@@ -383,7 +391,9 @@ const WarUI = (() => {
   function objectiveModal(room) {
     const st = view(room), me = st.players.find(p => p.id === Room.myId); if (!me || me.obj == null) return;
     const o = War.objectiveOf(st, me), orig = War.OBJECTIVES[me.obj];
-    UI.modal(`<div class="wobj"><span class="wobj-tag">${icon('target')} OBJETIVO SECRETO</span><p>${esc(o.text)}</p>
+    const progress = War.objectiveProgress(st, me);
+    UI.modal(`<div class="wobj war-mission"><span class="wobj-tag">${icon('target')} OBJETIVO SECRETO${st.mode === 'quick' ? ' · MODO RÁPIDO' : ''}</span>${o.name ? `<h2>${esc(o.name)}</h2><p class="war-mission-brief">${esc(o.brief)}</p>` : `<p>${esc(o.text)}</p>`}
+      <ul class="war-mission-goals">${progress.map(g => `<li class="${g.done ? 'done' : ''}"><div><span>${esc(g.label)}</span><b>${Math.min(g.current, g.target)} / ${g.target}</b></div><progress value="${Math.min(g.current, g.target)}" max="${g.target}" aria-label="${esc(g.label)}"></progress></li>`).join('')}</ul>
       ${o.id !== orig.id ? `<small class="muted">Seu objetivo original era: “${esc(orig.text.split('.')[0])}.” — como não dá mais para cumpri-lo, agora vale conquistar 24 territórios.</small>` : ''}
       <small class="muted">Não mostre a ninguém! Você vence assim que cumprir este objetivo.</small></div>`);
   }
@@ -410,13 +420,15 @@ const WarUI = (() => {
 
   // ---------- regras e resultado ----------
   function rulesModal() {
-    const C = WAR_MAP.continents;
+    const C = WAR_MAP.continents, quick = Room.room?.state?.mode === 'quick';
     UI.modal(`<h2>${icon('rules')} Como jogar Supremacia</h2><ul class="rules-list small">
+      ${quick ? '<li><b>Modo Rápido:</b> trocas com crescimento reduzido e cartas apenas por conquistas inéditas. A partida termina quando alguém cumpre seu objetivo, sem limite de duração.</li><li><b>Cartas por conquista inédita:</b> no máximo uma por turno, apenas se conquistar um território que nunca foi seu. Territórios da distribuição inicial e reconquistas não rendem carta. O histórico é individual.</li>' : ''}
       <li><b>Objetivo:</b> cada jogador recebe um <b>objetivo secreto</b> (🎯). Vence quem cumprir o seu primeiro.</li>
       <li><b>Início:</b> os 42 territórios são sorteados entre os jogadores, com 1 exército em cada. Na <b>1ª rodada</b> cada um só posiciona exércitos; os ataques começam na 2ª.</li>
-      <li><b>Sua vez, nesta ordem:</b> 1) recebe e posiciona exércitos; 2) ataca, se quiser; 3) desloca exércitos, se quiser; 4) recebe uma carta, se conquistou pelo menos um território.</li>
+      <li><b>Sua vez, nesta ordem:</b> 1) recebe e posiciona exércitos; 2) ataca, se quiser; 3) desloca exércitos, se quiser; 4) recebe uma carta, se conquistou pelo menos um território${quick ? ' que nunca foi seu' : ''}.</li>
       <li><b>Exércitos recebidos:</b> seus territórios ÷ 2 (parte inteira, mínimo 3) + bônus de cada continente inteiro que você tiver (colocados obrigatoriamente nele): ${Object.values(C).map(c => `${c.name} ${c.bonus}`).join(', ')}.</li>
-      <li><b>Troca de cartas:</b> 3 com figuras iguais ou 3 diferentes (●■▲, o ★ curinga vale qualquer uma). Valem 4, 6, 8, 10, 12, 15, 20, 25… exércitos, em sequência contando todas as trocas do jogo, + 2 em cada território das cartas que seja seu. Com 5 cartas a troca é obrigatória. Também é possível entregar 5 cartas com o mesmo símbolo (sem curingas) para receber o dobro do valor normal da troca, sem exigir o mesmo continente. Os bônus de 50% e de dobro não se acumulam.</li>
+      <li><b>Troca de cartas:</b> 3 com figuras iguais ou 3 diferentes (●■▲, o ★ curinga vale qualquer uma). Valem ${quick ? '4, 6, 8, 10, 12, 15, 16, 17… (depois de 15, +1 por troca)' : '4, 6, 8, 10, 12, 15, 20, 25…'} exércitos, em sequência contando todas as trocas do jogo, + 2 em cada território das cartas que seja seu. Com 5 cartas a troca é obrigatória. Também é possível entregar 5 cartas com o mesmo símbolo (sem curingas) para receber o dobro do valor normal da troca, sem exigir o mesmo continente. Os bônus de 50% e de dobro não se acumulam.</li>
+      <li><b>Novas missões:</b> rotas estratégicas, blocos conectados, fortalezas, presença em vários continentes e ofensivas em um turno. As metas de expansão se ajustam ao número de jogadores. Os requisitos da missão devem estar cumpridos ao mesmo tempo; acompanhe seu progresso no objetivo secreto.</li>
       <li><b>Bônus continental:</b> troque 3 cartas com o mesmo símbolo e do mesmo continente para receber 50% a mais sobre o valor normal da troca. Frações de soldado são arredondadas para baixo. Curingas não ativam esse bônus.</li>
       <li><b>Ataque:</b> só a vizinhos (fronteira ou linha pontilhada). Precisa de pelo menos 2 exércitos no território de origem — 1 sempre fica de ocupação. Atacante joga até 3 dados vermelhos, defensor até 3 azuis (incluindo o de ocupação). Compara-se o maior com o maior, o segundo com o segundo…; <b>empate é da defesa</b>. Cada comparação perdida tira 1 exército.</li>
       <li><b>Conquista:</b> se o território ficar sem exércitos, é seu: entram no mínimo 1 e no máximo os que participaram do último ataque. Dá para seguir atacando a partir dele.</li>
