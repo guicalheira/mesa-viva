@@ -1165,12 +1165,44 @@ body:has(#scr-game.war.active) #toasts { bottom: var(--war-toast-b, 104px); }
 .war-dice-choice { display: flex; gap: 4px; }
 .war-dice-choice .chip { padding: 7px 9px; }
 .war-hint { left: 14px; right: 304px; transform: none; bottom: 10px; max-width: 1020px; margin: 0 auto; white-space: normal; text-align: center; line-height: 1.4; border-radius: 6px; font-size: .67rem; color: #dfdfca; background: #101e21de; padding: 4px 8px; }
-.war-confirm { padding: 10px 4px 4px; }
-.war-confirm h2 { color: #fff0cc; margin: 12px 0; font: 700 1.55rem/1.2 Georgia, serif; }
-.war-confirm p { color: #c3cfbf; font: 500 .94rem/1.65 system-ui; }
-.war-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
-.war-confirm .btn, .war-cards-modal .btn { background: #233c3e; color: #f5ead0; border-color: #7d8b72; box-shadow: none; }
-.war-confirm .btn.primary, .war-cards-modal .btn.primary { background: #e7c579; color: #142528; border-color: #ffe2a1; }
+.modal:has(.war-confirm) { width: min(480px, 100%); padding: 30px; border: 1px solid #536763; border-radius: 16px; background: #142629; box-shadow: 0 24px 80px #0007; }
+.modal:has(.war-confirm) .x { background: transparent; border: 0; color: #b7c6bf; width: 40px; height: 40px; top: 6px; right: 6px; }
+.war-confirm { padding: 0; }
+.war-confirm-heading { display: flex; align-items: center; gap: 12px; }
+.war-confirm-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; background: #263a3a; color: #e7c579; }
+.war-confirm-icon .war-icon { width: 23px; height: 23px; }
+.war-confirm h2 { color: #fff0cc; margin: 22px 0 12px; font: 700 1.65rem/1.22 Georgia, serif; text-wrap: balance; }
+.war-confirm p { margin: 0; color: #c3cfbf; font: 400 .94rem/1.65 system-ui; }
+.war-confirm-next { display: flex; align-items: center; gap: 10px; margin-top: 22px; padding: 13px 0; border-top: 1px solid #33494a; border-bottom: 1px solid #33494a; color: #aabeb9; font: 500 .8rem/1.5 system-ui; }
+.war-confirm-next .war-icon { flex: none; color: #d8bb7c; }
+.war-confirm-actions { display: grid; grid-template-columns: 1fr 1.15fr; gap: 10px; margin-top: 24px; }
+.war-confirm-button { appearance: none; display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 48px; padding: 11px 13px; border: 1px solid #526966; border-radius: 8px; background: transparent; color: #e6ece3; font: 650 .83rem/1.35 system-ui; cursor: pointer; transition: background .15s, border-color .15s; }
+.war-confirm-button.primary { background: #e7c579; border-color: #e7c579; color: #142528; }
+.war-confirm-button.primary:hover { background: #f2d79e; border-color: #f2d79e; }
+.war-confirm-button.secondary:hover { background: #263b3c; border-color: #9cae9e; }
+.war-confirm-button:focus-visible, .modal:has(.war-confirm) .x:focus-visible { outline: 3px solid #f2d79e; outline-offset: 4px; }
+.war-cards-modal .btn { background: #233c3e; color: #f5ead0; border-color: #7d8b72; box-shadow: none; }
+.war-cards-modal .btn.primary { background: #e7c579; color: #142528; border-color: #ffe2a1; }
+.war-mode-description { margin: 2px 0 14px; color: var(--muted); font-size: .79rem; line-height: 1.55; }
+.war-mode-badge { display: inline-flex; align-items: center; gap: 8px; flex: none; margin-right: 8px; padding-right: 10px; border-right: 1px solid #a08b5666; color: #e7c579; font: 700 .68rem system-ui; }
+.modal:has(.war-mission) { background: #142629; border: 1px solid #72816a; color: #f5ead0; width: min(540px, 100%); }
+.war-mission h2 { margin: 18px 0 8px; color: #fff0cc; font: 700 1.65rem/1.2 Georgia, serif; }
+.war-mission .war-mission-brief { margin: 8px 0 20px; color: #b8c9bf; font: 400 .9rem/1.6 system-ui; }
+.war-mission .muted { color: #b8c9bf; }
+.war-mission-goals { padding: 0; margin: 20px 0; list-style: none; display: grid; gap: 18px; text-align: left; }
+.war-mission-goals li > div { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; color: #e4e9d9; font: 500 .82rem/1.5 system-ui; }
+.war-mission-goals b { flex: none; color: #e7c579; font-variant-numeric: tabular-nums; }
+.war-mission-goals progress { appearance: none; display: block; width: 100%; height: 5px; margin-top: 9px; border: 0; border-radius: 4px; background: #314649; accent-color: #e7c579; overflow: hidden; }
+.war-mission-goals progress::-webkit-progress-bar { background: #314649; }
+.war-mission-goals progress::-webkit-progress-value { background: #e7c579; }
+.war-mission-goals progress::-moz-progress-bar { background: #e7c579; }
+.war-mission-goals .done b { color: #a9d29b; }
+@media (max-width: 480px) {
+  .modal:has(.war-confirm) { padding: 24px 20px 20px; }
+  .war-confirm-actions { grid-template-columns: 1fr; }
+  .war-confirm-button.primary { grid-row: 1; }
+  .war-mode-badge { font-size: .6rem; }
+}
 /* Deslocamento contínuo, sem recriar o controle durante o arraste. */
 .war-movement { flex: 0 1 184px; min-width: 140px; }
 .war-movement > span { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

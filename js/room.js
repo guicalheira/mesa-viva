@@ -43,7 +43,7 @@ const Room = (() => {
     isHost = true; myId = me.username;
     Net.on('error', onError);
     Net.host(code => {
-      room = { code, hostId: myId, game, settings: { startMoney: ECON.START, maxRounds: 30, variant: 'diplomata', respondSec: 15, turnSec: 90, goal: 7, answerSec: 60, gamble: true, reboot: false, swap: true }, players: [{ ...fromProfile(me), ready: true, ...(game === 'ludo' || game === 'war' || game === 'arq' || game === 'patrimonio' ? { seat: 0 } : {}) }], chat: [], phase: 'lobby', state: null };
+      room = { code, hostId: myId, game, settings: { startMoney: ECON.START, maxRounds: 30, variant: 'diplomata', respondSec: 15, turnSec: 90, warMode: 'quick', goal: 7, answerSec: 60, gamble: true, reboot: false, swap: true }, players: [{ ...fromProfile(me), ready: true, ...(game === 'ludo' || game === 'war' || game === 'arq' || game === 'patrimonio' ? { seat: 0 } : {}) }], chat: [], phase: 'lobby', state: null };
       sysChat(`Sala ${code} criada. Compartilhe o código com seus amigos!`);
       onReady(code); commit();
     }, (peerId, msg) => handle(peerId, msg), (pid, peerId) => {
@@ -237,6 +237,7 @@ const Room = (() => {
       case 'settings': {
         if (!hostOnly || room.phase !== 'lobby') return;
         const s = msg.settings || {};
+        if ('warMode' in s && (room.game !== 'war' || !['classic', 'quick'].includes(s.warMode))) return;
         // Ludo: 4 (cruz) ou 6 (hexágono) lugares; não dá para diminuir com mais gente na sala que lugares
         if ('seats' in s) {
           if (room.game !== 'ludo' || ![4, 6].includes(s.seats)) return;

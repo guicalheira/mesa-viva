@@ -1174,12 +1174,44 @@ body:has(#scr-game.war.active) #toasts { bottom: var(--war-toast-b, 104px); }
 .war-dice-choice { display: flex; gap: 4px; }
 .war-dice-choice .chip { padding: 7px 9px; }
 .war-hint { left: 14px; right: 304px; transform: none; bottom: 10px; max-width: 1020px; margin: 0 auto; white-space: normal; text-align: center; line-height: 1.4; border-radius: 6px; font-size: .67rem; color: #dfdfca; background: #101e21de; padding: 4px 8px; }
-.war-confirm { padding: 10px 4px 4px; }
-.war-confirm h2 { color: #fff0cc; margin: 12px 0; font: 700 1.55rem/1.2 Georgia, serif; }
-.war-confirm p { color: #c3cfbf; font: 500 .94rem/1.65 system-ui; }
-.war-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
-.war-confirm .btn, .war-cards-modal .btn { background: #233c3e; color: #f5ead0; border-color: #7d8b72; box-shadow: none; }
-.war-confirm .btn.primary, .war-cards-modal .btn.primary { background: #e7c579; color: #142528; border-color: #ffe2a1; }
+.modal:has(.war-confirm) { width: min(480px, 100%); padding: 30px; border: 1px solid #536763; border-radius: 16px; background: #142629; box-shadow: 0 24px 80px #0007; }
+.modal:has(.war-confirm) .x { background: transparent; border: 0; color: #b7c6bf; width: 40px; height: 40px; top: 6px; right: 6px; }
+.war-confirm { padding: 0; }
+.war-confirm-heading { display: flex; align-items: center; gap: 12px; }
+.war-confirm-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; background: #263a3a; color: #e7c579; }
+.war-confirm-icon .war-icon { width: 23px; height: 23px; }
+.war-confirm h2 { color: #fff0cc; margin: 22px 0 12px; font: 700 1.65rem/1.22 Georgia, serif; text-wrap: balance; }
+.war-confirm p { margin: 0; color: #c3cfbf; font: 400 .94rem/1.65 system-ui; }
+.war-confirm-next { display: flex; align-items: center; gap: 10px; margin-top: 22px; padding: 13px 0; border-top: 1px solid #33494a; border-bottom: 1px solid #33494a; color: #aabeb9; font: 500 .8rem/1.5 system-ui; }
+.war-confirm-next .war-icon { flex: none; color: #d8bb7c; }
+.war-confirm-actions { display: grid; grid-template-columns: 1fr 1.15fr; gap: 10px; margin-top: 24px; }
+.war-confirm-button { appearance: none; display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 48px; padding: 11px 13px; border: 1px solid #526966; border-radius: 8px; background: transparent; color: #e6ece3; font: 650 .83rem/1.35 system-ui; cursor: pointer; transition: background .15s, border-color .15s; }
+.war-confirm-button.primary { background: #e7c579; border-color: #e7c579; color: #142528; }
+.war-confirm-button.primary:hover { background: #f2d79e; border-color: #f2d79e; }
+.war-confirm-button.secondary:hover { background: #263b3c; border-color: #9cae9e; }
+.war-confirm-button:focus-visible, .modal:has(.war-confirm) .x:focus-visible { outline: 3px solid #f2d79e; outline-offset: 4px; }
+.war-cards-modal .btn { background: #233c3e; color: #f5ead0; border-color: #7d8b72; box-shadow: none; }
+.war-cards-modal .btn.primary { background: #e7c579; color: #142528; border-color: #ffe2a1; }
+.war-mode-description { margin: 2px 0 14px; color: var(--muted); font-size: .79rem; line-height: 1.55; }
+.war-mode-badge { display: inline-flex; align-items: center; gap: 8px; flex: none; margin-right: 8px; padding-right: 10px; border-right: 1px solid #a08b5666; color: #e7c579; font: 700 .68rem system-ui; }
+.modal:has(.war-mission) { background: #142629; border: 1px solid #72816a; color: #f5ead0; width: min(540px, 100%); }
+.war-mission h2 { margin: 18px 0 8px; color: #fff0cc; font: 700 1.65rem/1.2 Georgia, serif; }
+.war-mission .war-mission-brief { margin: 8px 0 20px; color: #b8c9bf; font: 400 .9rem/1.6 system-ui; }
+.war-mission .muted { color: #b8c9bf; }
+.war-mission-goals { padding: 0; margin: 20px 0; list-style: none; display: grid; gap: 18px; text-align: left; }
+.war-mission-goals li > div { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; color: #e4e9d9; font: 500 .82rem/1.5 system-ui; }
+.war-mission-goals b { flex: none; color: #e7c579; font-variant-numeric: tabular-nums; }
+.war-mission-goals progress { appearance: none; display: block; width: 100%; height: 5px; margin-top: 9px; border: 0; border-radius: 4px; background: #314649; accent-color: #e7c579; overflow: hidden; }
+.war-mission-goals progress::-webkit-progress-bar { background: #314649; }
+.war-mission-goals progress::-webkit-progress-value { background: #e7c579; }
+.war-mission-goals progress::-moz-progress-bar { background: #e7c579; }
+.war-mission-goals .done b { color: #a9d29b; }
+@media (max-width: 480px) {
+  .modal:has(.war-confirm) { padding: 24px 20px 20px; }
+  .war-confirm-actions { grid-template-columns: 1fr; }
+  .war-confirm-button.primary { grid-row: 1; }
+  .war-mode-badge { font-size: .6rem; }
+}
 /* Deslocamento contínuo, sem recriar o controle durante o arraste. */
 .war-movement { flex: 0 1 184px; min-width: 140px; }
 .war-movement > span { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -1683,7 +1715,7 @@ body:has(#scr-game.war.active) #toasts { bottom: var(--war-toast-b, 104px); }
   <script>
 // ===== Dados estáticos: artes, personagens, tabuleiro, cartas =====
 // versão do jogo: mude a cada publicação (avisa quem estiver com a página antiga aberta)
-const APP_VERSION = '2026.11.12-ultima-2';
+const APP_VERSION = '2026.11.16-war-quick-1';
 const IMG = {
   char_vitoria: 'data:image/webp;base64,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',
   char_otavio: 'data:image/webp;base64,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',
@@ -8075,7 +8107,8 @@ const War = (() => {
   const SHAPES = ['circulo', 'quadrado', 'triangulo'];
   const CARDS = [...TERR.map((t, i) => ({ id: i, terr: t, shape: SHAPES[i % 3] })), { id: 42, terr: null, shape: 'curinga' }, { id: 43, terr: null, shape: 'curinga' }];
   // TABELA II: exércitos por troca (sequência de todas as trocas do jogo)
-  const tradeValue = n => (n < 5 ? 4 + 2 * n : 15 + 5 * (n - 5));
+  const isQuick = st => st?.mode === 'quick';
+  const tradeValue = (n, mode) => (n < 5 ? 4 + 2 * n : 15 + (mode === 'quick' ? 1 : 5) * (n - 5));
   // os 14 objetivos
   const OBJECTIVES = [
     { id: 0, kind: 'conts', conts: ['eu', 'oc'], plus: 1, text: 'Conquistar na totalidade a EUROPA, a OCEANIA e mais um terceiro continente à sua escolha.' },
@@ -8089,6 +8122,26 @@ const War = (() => {
     ...['azul', 'amarelo', 'vermelho', 'preto', 'branco', 'verde'].map((c, k) => ({ id: 8 + k, kind: 'destroy', color: c,
       text: `Destruir totalmente os exércitos ${COLORS.find(x => x.id === c).name.toUpperCase()}S. Se eles já foram destruídos por outro jogador, ou se você é o próprio exército ${COLORS.find(x => x.id === c).name.toLowerCase()}, o seu objetivo passa a ser conquistar 24 territórios.` })),
   ];
+  // As metas de expansão partem da distribuição inicial: ninguém recebe uma missão já cumprida.
+  const expansion = (fast = 12, normal = 18, gain = 3) => ({ kind: 'terr', fast, normal, gain });
+  const campaign = (fast = 4, normal = 7) => ({ kind: 'new', fast, normal });
+  const missions = [
+    ['Expansão imperial', 'Amplie suas fronteiras e sustente o território conquistado.', [expansion(14, 21, 4), campaign()]],
+    ['Linha de frente', 'Una suas posições em um grande bloco de territórios vizinhos.', [{ kind: 'connected', fast: 12, normal: 18, gain: 2 }, campaign()]],
+    ['Rede de fortalezas', 'Transforme suas posições em bases militares bem defendidas.', [{ kind: 'terr', fast: 8, normal: 12, min: 3 }, campaign()]],
+    ['Império intercontinental', 'Expanda sua influência por diferentes regiões do mundo.', [expansion(), { kind: 'presence', fast: 4, normal: 5, each: 1 }, campaign()]],
+    ['Potência regional', 'Consolide um continente e amplie seu domínio além dele.', [{ kind: 'continents', fast: 1, normal: 1 }, expansion(12, 18, 3), campaign()]],
+    ['Ponte do Atlântico', 'Controle os dois lados do Atlântico e a entrada da Europa.', [{ kind: 'keys', ids: ['brasil', 'argelia', 'portugal'] }, campaign()]],
+    ['Rota do Pacífico', 'Una as posições estratégicas do extremo norte e do Japão.', [{ kind: 'keys', ids: ['alasca', 'vladivostok', 'japao'] }, campaign()]],
+    ['Corredor das Américas', 'Abra uma rota contínua da América do Norte até a África.', [{ kind: 'keys', ids: ['mexico', 'venezuela', 'brasil', 'argelia'] }, campaign()]],
+    ['Campanha vitoriosa', 'Avance sobre novas terras sem abandonar sua expansão.', [campaign(7, 11), expansion(12, 18, 2)]],
+    ['Ofensiva relâmpago', 'Prepare uma ofensiva para conquistar vários territórios em uma única vez.', [{ kind: 'turn', fast: 3, normal: 5 }, campaign(5, 8)]],
+    ['Bases no mundo', 'Estabeleça bases em três continentes diferentes.', [{ kind: 'presence', fast: 3, normal: 3, each: 3, min: 2 }, campaign()]],
+    ['Dupla coroa', 'Consolide dois continentes completos sob a mesma bandeira.', [{ kind: 'continents', fast: 2, normal: 2 }, campaign()]],
+    ['Muralha estratégica', 'Construa uma rede conectada de posições reforçadas.', [{ kind: 'connected', fast: 7, normal: 11, min: 2 }, campaign()]],
+    ['Encruzilhada do mundo', 'Controle os acessos entre a África, a Europa e a Ásia.', [{ kind: 'keys', ids: ['egito', 'orientemedio', 'china'] }, campaign()]],
+  ];
+  missions.forEach(([name, brief, goals], i) => OBJECTIVES.push({ id: 14 + i, kind: 'mission', name, brief, goals }));
   const FALLBACK = 6; // "conquistar 24 territórios"
 
   // ---------- utilidades ----------
@@ -8114,13 +8167,57 @@ const War = (() => {
   // objetivo efetivo (o de destruir vira 24 territórios quando não dá mais para cumprir)
   function objectiveOf(st, p) {
     const o = OBJECTIVES[p.obj];
+    if (o.kind === 'mission') {
+      const initial = p.initialTerritories?.length ?? Math.floor(TERR.length / st.players.length);
+      const goals = o.goals.map(g => ({ ...g, n: g.ids?.length ?? Math.min(TERR.length, Math.max(g[isQuick(st) ? 'fast' : 'normal'], g.gain ? initial + g.gain : 0)) }));
+      return { ...o, goals, text: goals.map(goalLabel).join('; ') + '.' };
+    }
     if (o.kind !== 'destroy') return o;
     const target = st.players.find(q => q.color === o.color);
     if (!target || target.id === p.id || (target.out && target.outBy !== p.id)) return { ...OBJECTIVES[FALLBACK], from: o.id };
     return o;
   }
+  function goalLabel(g) {
+    if (g.kind === 'terr') return `Controlar ${g.n} territórios${g.min > 1 ? ` com pelo menos ${g.min} soldados em cada` : ''}`;
+    if (g.kind === 'connected') return `Controlar um bloco de ${g.n} territórios conectados${g.min > 1 ? `, cada um com pelo menos ${g.min} soldados` : ''}`;
+    if (g.kind === 'new') return `Conquistar ${g.n} territórios inéditos na campanha (os iniciais não contam)`;
+    if (g.kind === 'turn') return `Conquistar ${g.n} territórios em um único turno`;
+    if (g.kind === 'keys') return `Controlar ${g.ids.map(t => terrName[t]).join(', ')}`;
+    if (g.kind === 'presence') return `Manter ${g.each} território${g.each > 1 ? 's' : ''}${g.min > 1 ? ` com ${g.min}+ soldados cada` : ''} em cada um de ${g.n} continentes`;
+    return `Controlar ${g.n} continente${g.n > 1 ? 's' : ''} completo${g.n > 1 ? 's' : ''}`;
+  }
+  function largestBlock(st, pid, min = 1) {
+    const left = new Set(owned(st, pid).filter(t => st.armies[t] >= min)); let largest = 0;
+    while (left.size) {
+      const q = [left.values().next().value]; left.delete(q[0]);
+      for (let i = 0; i < q.length; i++) for (const t of ADJ[q[i]]) if (left.delete(t)) q.push(t);
+      largest = Math.max(largest, q.length);
+    }
+    return largest;
+  }
+  function newConquests(p) { return Math.max(0, (p.visited?.length || 0) - (p.initialTerritories?.length || 0)); }
+  function objectiveProgress(st, p) {
+    const o = objectiveOf(st, p), mine = owned(st, p.id);
+    const progress = (label, current, target) => ({ label, current, target, done: current >= target });
+    if (o.kind === 'mission') return o.goals.map(g => {
+      const value = g.kind === 'terr' ? mine.filter(t => st.armies[t] >= (g.min || 1)).length
+        : g.kind === 'connected' ? largestBlock(st, p.id, g.min)
+        : g.kind === 'new' ? newConquests(p)
+        : g.kind === 'turn' ? p.turnConquests || 0
+        : g.kind === 'keys' ? g.ids.filter(t => st.owner[t] === p.id).length
+        : g.kind === 'presence' ? CONTS.filter(c => inCont[c].filter(t => st.owner[t] === p.id && st.armies[t] >= (g.min || 1)).length >= g.each).length
+        : CONTS.filter(c => ownsCont(st, p.id, c)).length;
+      return progress(goalLabel(g), value, g.n);
+    });
+    if (o.kind === 'terr') return [progress(o.text, mine.filter(t => st.armies[t] >= o.min).length, o.n)];
+    if (o.kind === 'destroy') return [progress(`Eliminar o exército ${colorName(o.color).toLowerCase()}`, achieved(st, p) ? 1 : 0, 1)];
+    const rows = o.conts.map(c => progress(`Controlar ${CONT[c].name}`, inCont[c].filter(t => st.owner[t] === p.id).length, inCont[c].length));
+    if (o.plus) rows.push(progress('Controlar mais um continente completo', CONTS.filter(c => !o.conts.includes(c) && ownsCont(st, p.id, c)).length, 1));
+    return rows;
+  }
   function achieved(st, p) {
     const o = objectiveOf(st, p);
+    if (o.kind === 'mission') return !st.occupy && objectiveProgress(st, p).every(g => g.done);
     if (o.kind === 'destroy') { const t = st.players.find(q => q.color === o.color); return !!(t && t.out && t.outBy === p.id); }
     if (o.kind === 'terr') return owned(st, p.id).filter(t => st.armies[t] >= o.min).length >= o.n;
     if (!o.conts.every(c => ownsCont(st, p.id, c))) return false;
@@ -8134,10 +8231,10 @@ const War = (() => {
     const used = new Set(room.players.map(p => p.seat).filter(v => v != null));
     const players = room.players.map(p => {
       let c = p.seat; if (c == null || c < 0 || c > 5) { c = [0, 1, 2, 3, 4, 5].find(i => !used.has(i)); used.add(c); }
-      return { id: p.id, color: COLORS[c].id, cards: [], out: false, obj: null, battleStats: emptyBattleStats() };
+      return { id: p.id, color: COLORS[c].id, cards: [], out: false, obj: null, battleStats: emptyBattleStats(), initialTerritories: [], visited: [], turnConquests: 0 };
     });
     const st = {
-      gameId: 'w' + Date.now().toString(36) + rnd(1e6).toString(36),
+      gameId: 'w' + Date.now().toString(36) + rnd(1e6).toString(36), mode: s.warMode === 'quick' ? 'quick' : 'classic',
       players: shuffle(players), owner: {}, armies: {}, deck: [], used: [], trades: 0,
       turn: 0, round: 1, phase: 'place', pool: null, conquered: false, occupy: null, moved: {},
       turnMs: (s.turnSec ?? 120) * 1000, deadline: 0, afk: null,
@@ -8145,14 +8242,15 @@ const War = (() => {
     };
     // objetivos: tira os de destruir cores que não estão na partida
     const colorsIn = new Set(st.players.map(p => p.color));
-    const objs = shuffle(OBJECTIVES.filter(o => o.kind !== 'destroy' || colorsIn.has(o.color)).map(o => o.id));
+    const objs = shuffle(OBJECTIVES.filter(o => isQuick(st) ? o.kind === 'mission' : o.kind !== 'destroy' || colorsIn.has(o.color)).map(o => o.id));
     st.players.forEach(p => { p.obj = objs.pop(); });
     // sorteio dos territórios: cartas sem curingas, distribuídas em sentido horário
     const deal = shuffle(TERR.slice()); let k = 0;
     deal.forEach(t => { st.owner[t] = st.players[k].id; st.armies[t] = 1; k = (k + 1) % st.players.length; });
+    st.players.forEach(p => { p.initialTerritories = owned(st, p.id); p.visited = [...p.initialTerritories]; });
     st.turn = k % st.players.length; // começa quem vem depois de quem recebeu a última carta
     st.deck = shuffle(CARDS.map(c => c.id));
-    log(st, `🌍 A guerra começou! ${st.players.length} exércitos, ${TERR.length} territórios sorteados. Cada um recebeu um objetivo secreto.`);
+    log(st, `🌍 A guerra começou${isQuick(st) ? ' no Modo Rápido' : ''}! ${st.players.length} exércitos, ${TERR.length} territórios sorteados. Cada um recebeu um objetivo secreto.`);
     startTurn(st);
     return st;
   }
@@ -8160,6 +8258,7 @@ const War = (() => {
   // ---------- turno ----------
   function startTurn(st) {
     const p = cur(st);
+    p.turnConquests = 0;
     st.phase = 'place'; st.conquered = false; st.occupy = null; st.moved = {}; st.lastBattle = null;
     const n = owned(st, p.id).length;
     const pool = { free: Math.max(3, Math.floor(n / 2)), cont: {} };
@@ -8185,7 +8284,7 @@ const War = (() => {
     if (!st.deck.length) { st.deck = shuffle(st.used); st.used = []; if (st.deck.length) log(st, '🔁 O monte de cartas acabou: as cartas trocadas foram embaralhadas de novo.'); }
     return st.deck.length ? st.deck.pop() : null;
   }
-  // relógio da vez: cada ação de quem joga reinicia; quando zera, o jogo joga por ele
+  // Relógio por ação: cada ação reinicia o prazo; quando zera, joga pelo ausente.
   function arm(st, fresh, auto) {
     if (!st.turnMs || st.result) { st.deadline = 0; return; }
     if (fresh) st.afk = null;
@@ -8202,8 +8301,8 @@ const War = (() => {
     const uniq = new Set(rest).size;
     return uniq === 1 || uniq === rest.length; // iguais ou todas diferentes (o curinga completa)
   }
-  function tradeReward(trades, cards = []) {
-    const base = tradeValue(trades), selected = cards.map(id => CARDS[id]);
+  function tradeReward(trades, cards = [], mode) {
+    const base = tradeValue(trades, mode), selected = cards.map(id => CARDS[id]);
     const first = selected[0];
     const sameContinent = selected.length === 3 && new Set(cards).size === 3 && first?.terr
       && selected.every(c => c?.terr && c.shape === first.shape && contOf[c.terr] === contOf[first.terr]);
@@ -8216,7 +8315,7 @@ const War = (() => {
     function choose(size, start = 0, picked = []) {
       if (picked.length === size) {
         if (!validSet(picked)) return;
-        const score = tradeReward(st.trades, picked).bonus + picked.filter(id => CARDS[id].terr && st.owner[CARDS[id].terr] === p.id).length * 2 - picked.filter(id => CARDS[id].shape === 'curinga').length;
+        const score = tradeReward(st.trades, picked, st.mode).bonus + picked.filter(id => CARDS[id].terr && st.owner[CARDS[id].terr] === p.id).length * 2 - picked.filter(id => CARDS[id].shape === 'curinga').length;
         if (score > bestScore) { best = picked; bestScore = score; }
         return;
       }
@@ -8246,11 +8345,15 @@ const War = (() => {
     log(st, `⚔️ ${terrName[from]} → ${terrName[to]}: ataque [${a.join(' ')}] × defesa [${d.join(' ')}] — ataque perde ${lossA}, defesa perde ${lossD}.`);
     if (conquered) {
       ats.conquests++;
-      st.owner[to] = att; st.conquered = true;
+      ap.turnConquests = (ap.turnConquests || 0) + 1;
+      const firstConquest = !ap.visited?.includes(to);
+      if (firstConquest) (ap.visited ||= []).push(to);
+      st.owner[to] = att;
+      if (!isQuick(st) || firstConquest) st.conquered = true;
       st.occupy = { from, to, max: Math.min(n - lossA, st.armies[from] - 1) };
       st.occupy.max = Math.max(1, st.occupy.max);
       log(st, `🏴 ${nameOf(att)} conquistou ${terrName[to]}!`);
-      ev(st, { type: 'conquer', pid: att, from, to, def });
+      ev(st, { type: 'conquer', pid: att, from, to, def, firstConquest });
       const dp = pl(st, def);
       if (!owned(st, def).length) eliminate(st, dp, pl(st, att));
     }
@@ -8305,7 +8408,7 @@ const War = (() => {
         const cards = (a.cards || []).map(Number);
         if (![3, 5].includes(cards.length) || new Set(cards).size !== cards.length || !cards.every(c => p.cards.includes(c))) return 'Escolha 3 ou 5 cartas suas.';
         if (!validSet(cards)) return 'Troque 3 figuras iguais ou diferentes, ou 5 cartas com o mesmo símbolo (sem curingas).';
-        const reward = tradeReward(st.trades, cards), v = reward.total; st.trades++;
+        const reward = tradeReward(st.trades, cards, st.mode), v = reward.total; st.trades++;
         p.cards = p.cards.filter(c => !cards.includes(c)); st.used.push(...cards);
         st.pool.free += v;
         const bonus = [];
@@ -8393,6 +8496,13 @@ const War = (() => {
   // continente-alvo: o do objetivo que estiver mais perto; senão o de melhor proporção
   function targetConts(st, p) {
     const o = objectiveOf(st, p), ratio = c => inCont[c].filter(t => st.owner[t] === p.id).length / inCont[c].length;
+    if (o.kind === 'mission') {
+      const keys = o.goals.filter(g => g.kind === 'keys').flatMap(g => g.ids).filter(t => st.owner[t] !== p.id);
+      if (keys.length) return [...new Set(keys.map(t => contOf[t]))];
+      const presence = o.goals.find(g => g.kind === 'presence');
+      if (presence) return CONTS.filter(c => inCont[c].filter(t => st.owner[t] === p.id && st.armies[t] >= (presence.min || 1)).length < presence.each)
+        .sort((a, b) => ratio(b) - ratio(a));
+    }
     if (o.kind === 'conts') {
       const list = [...o.conts]; if (o.plus) list.push(CONTS.filter(c => !o.conts.includes(c)).sort((a, b) => ratio(b) - ratio(a))[0]);
       return list.sort((a, b) => ratio(b) - ratio(a));
@@ -8406,6 +8516,8 @@ const War = (() => {
     for (const n of en) {
       const g = goals.indexOf(contOf[n]); s += g === 0 ? 4 : g === 1 ? 2.5 : g >= 0 ? 1.5 : .6;
       if (target && st.owner[n] === target) s += 3;
+      if (isQuick(st) && !p.visited?.includes(n)) s += 2;
+      if (o.kind === 'mission' && o.goals.some(g => g.kind === 'keys' && g.ids.includes(n))) s += 5;
       s += Math.max(0, 3 - st.armies[n]) * .4;
     }
     if (goals.includes(contOf[t])) s += 1.5;
@@ -8420,6 +8532,12 @@ const War = (() => {
       if (set && (p.cards.length >= 5 || p.cards.length >= 3)) return { type: 'trade', cards: set };
       const contLeft = Object.keys(st.pool.cont).find(c => st.pool.cont[c]);
       const cand = contLeft ? mine.filter(t => contOf[t] === contLeft) : mine;
+      const mission = objectiveOf(st, p), progress = mission.goals ? objectiveProgress(st, p) : [];
+      const fortify = mission.goals?.find((g, i) => g.min > 1 && !progress[i].done);
+      if (fortify) {
+        const t = cand.filter(t => st.armies[t] < fortify.min).sort((a, b) => scoreFront(st, p, b, goals) - scoreFront(st, p, a, goals))[0];
+        if (t) return { type: 'place', t, n: Math.min(fortify.min - st.armies[t], (contLeft ? st.pool.cont[contLeft] : 0) + st.pool.free) };
+      }
       let best = cand[0], bs = -Infinity;
       for (const t of cand) { const s = scoreFront(st, p, t, goals); if (s > bs) { bs = s; best = t; } }
       const n = contLeft && !st.pool.free ? st.pool.cont[contLeft] : contLeft ? st.pool.cont[contLeft] : Math.min(st.pool.free, Math.max(1, Math.ceil(st.pool.free / 2)));
@@ -8435,6 +8553,8 @@ const War = (() => {
           const a = st.armies[f] - 1, d = st.armies[t];
           if (a < d + 1 && !(a >= 3 && d <= 2)) continue;
           let s = a / d + (goals.indexOf(contOf[t]) === 0 ? 1.5 : goals.includes(contOf[t]) ? .7 : 0) + (target && st.owner[t] === target ? 2 : 0);
+          if (isQuick(st) && !p.visited?.includes(t)) s += 1.5;
+          if (o.kind === 'mission' && o.goals.some(g => g.kind === 'keys' && g.ids.includes(t))) s += 4;
           if (inCont[contOf[t]].every(x => x === t || st.owner[x] === pid)) s += 2; // fecha um continente
           if (s > bs) { bs = s; best = { type: 'attack', from: f, to: t, n: Math.min(3, a) }; }
         }
@@ -8478,7 +8598,7 @@ const War = (() => {
   }
 
   return {
-    COLORS, CARDS, OBJECTIVES, SHAPES, newGame, act, viewFor, botAction, botDelay, timeout, objectiveOf, achieved, tradeValue, tradeReward, validSet,
+    COLORS, CARDS, OBJECTIVES, SHAPES, newGame, act, viewFor, botAction, botDelay, timeout, objectiveOf, objectiveProgress, achieved, tradeValue, tradeReward, validSet,
     owned, ownsCont, contOf, terrName, inCont, poolTotal, setNameResolver: f => (nameOf = f),
   };
 })();
@@ -9263,19 +9383,27 @@ const WarUI = (() => {
   }
   function confirmAction(a, title, detail) {
     if (blocked()) return;
-    const key = stateKey(Room.room);
-    const m = UI.modal(`<div class="war-confirm"><span class="war-eyebrow">CONFIRMAR ORDEM</span><h2 id="war-confirm-title">${esc(title)}</h2>
-      <p id="war-confirm-detail">${esc(detail)}</p><div class="war-confirm-actions"><button class="btn" id="war-confirm-no">Não, voltar</button><button class="btn primary" id="war-confirm-yes">Sim, confirmar</button></div></div>`);
+    const key = stateKey(Room.room), trigger = document.activeElement, ending = a.type === 'endTurn';
+    const m = UI.modal(`<div class="war-confirm"><div class="war-confirm-heading"><span class="war-confirm-icon">${icon(ending ? 'flag' : 'troops')}</span><span class="war-eyebrow">${ending ? 'PASSAR A VEZ' : 'PRÓXIMA ETAPA'}</span></div><h2 id="war-confirm-title">${esc(title)}</h2>
+      <p id="war-confirm-detail">${esc(detail)}</p><div class="war-confirm-next">${icon(ending ? 'clock' : 'troops')}<span>${ending ? 'O próximo comandante assume a campanha.' : 'A seguir: reposicione seus soldados.'}</span></div>
+      <div class="war-confirm-actions"><button type="button" class="war-confirm-button secondary" id="war-confirm-no">Continuar jogando</button><button type="button" class="war-confirm-button primary" id="war-confirm-yes">${ending ? 'Encerrar turno' : 'Ir para deslocamentos'}<span aria-hidden="true">→</span></button></div></div>`);
     m.setAttribute('role', 'alertdialog'); m.setAttribute('aria-modal', 'true');
     m.setAttribute('aria-labelledby', 'war-confirm-title'); m.setAttribute('aria-describedby', 'war-confirm-detail');
-    const cancel = () => UI.closeModal();
+    const cancel = () => { UI.closeModal(); if (trigger?.isConnected) trigger.focus(); };
     $('#war-confirm-no', m).onclick = cancel;
     $('#war-confirm-yes', m).onclick = () => {
       UI.closeModal();
       if (!Room.room?.state || key !== stateKey(Room.room) || blocked()) return UI.toast('A partida avançou. Confira o mapa e escolha sua ação novamente.');
       sendAction(a);
     };
-    m.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); cancel(); } });
+    m.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+      if (e.key === 'Tab') {
+        const buttons = [...m.querySelectorAll('button')], first = buttons[0], last = buttons[buttons.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    });
     $('#war-confirm-no', m).focus();
   }
   const ICONS = {
@@ -9370,7 +9498,7 @@ const WarUI = (() => {
     } else if (st.occupy) txt = `<span>${icon('flag')} Conquistou <b>${esc(War.terrName[st.occupy.to])}</b>! Quantos exércitos entram?</span>`;
     else if (st.phase === 'attack') txt = `<span>${icon('attack')} <b>Ataque</b>: escolha um território seu com 2+ exércitos e depois um vizinho inimigo.</span>`;
     else txt = `<span>${icon('troops')} <b>Deslocamento</b>: mova exércitos entre territórios vizinhos seus (cada um se move uma vez).</span>`;
-    $('#war-table .war-banner').innerHTML = `${txt}${st.deadline && !st.result ? ' <small id="war-secs" class="war-secs"></small>' : ''}`;
+    $('#war-table .war-banner').innerHTML = `${st.mode === 'quick' ? '<span class="war-mode-badge">Modo Rápido</span>' : ''}${txt}${st.deadline && !st.result ? ' <small id="war-secs" class="war-secs" title="Tempo restante para agir"></small>' : ''}`;
   }
   const phaseName = st => st.phase === 'place' ? 'posicionando' : st.phase === 'attack' ? (st.occupy ? 'ocupando' : 'atacando') : st.phase === 'move' ? 'deslocando' : '';
 
@@ -9443,7 +9571,7 @@ const WarUI = (() => {
         amount = n;
         bar = territorySelect(st, sel, War.owned(st, Room.myId), 'war-source', '1. Território que recebe') + troopSlider(n, available, 'place');
         bar += `<button class="chip" id="war-all" ${available < 1 ? 'disabled' : ''}>Todos (${available})</button><button class="chip go" id="war-place" ${!sel || available < 1 || me.cards.length >= 5 ? 'disabled' : ''}>Adicionar ${n} soldado${n === 1 ? '' : 's'}</button>`;
-        if (me.cards.length >= 3) bar += `<button class="chip" data-open="cards">Trocar cartas · +${War.tradeValue(st.trades)}</button>`;
+        if (me.cards.length >= 3) bar += `<button class="chip" data-open="cards">Trocar cartas · +${War.tradeValue(st.trades, st.mode)}</button>`;
         hint = me.cards.length >= 5 ? 'Troca obrigatória: troque 3 cartas ou 5 do mesmo símbolo antes de adicionar soldados.' : `${War.poolTotal(st.pool)} soldados na reserva. Escolha o território, a quantidade e clique em Adicionar.`;
       } else if (st.occupy) {
         const o = st.occupy, key = o.from + o.to + o.max;
@@ -9501,9 +9629,9 @@ const WarUI = (() => {
     $('#war-place', B)?.addEventListener('click', () => sendAction({ type: 'place', t: sel, n: amount }));
     $('#war-attack', B)?.addEventListener('click', () => sendAction({ type: 'attack', from: sel, to: target, n: dice }));
     $('#war-occupy', B)?.addEventListener('click', () => sendAction({ type: 'occupy', n: moveN }));
-    $('#war-end-attack', B)?.addEventListener('click', () => confirmAction({ type: 'endAttack' }, 'Encerrar ataques, certeza?', 'Você passará para a etapa de mover tropas e não poderá atacar novamente neste turno.'));
+    $('#war-end-attack', B)?.addEventListener('click', () => confirmAction({ type: 'endAttack' }, 'Encerrar seus ataques?', 'Ao avançar, você poderá mover suas tropas. Novos ataques ficam para o próximo turno.'));
     $('#war-move', B)?.addEventListener('click', () => sendAction({ type: 'move', from: sel, to: target, n: moveN }));
-    $('#war-end-turn', B)?.addEventListener('click', () => confirmAction({ type: 'endTurn' }, 'Encerrar vez, certeza?', `Sua vez será concluída${st.conquered ? ' e você receberá uma carta pela conquista' : ''}. Deseja continuar?`));
+    $('#war-end-turn', B)?.addEventListener('click', () => confirmAction({ type: 'endTurn' }, 'Tudo pronto para passar a vez?', `Você já pode encerrar seu turno.${st.conquered ? ' Uma carta de território será adicionada à sua mão.' : st.mode === 'quick' ? ' Sem conquista inédita neste turno, você não recebe carta.' : ''}`));
   }
 
   // ---------- ferramentas e gaveta ----------
@@ -9590,10 +9718,10 @@ const WarUI = (() => {
       // Só uma alteração real na mão reconstrói as cartas; selecionar não recria a janela.
       if (handKey !== key) {
         handKey = key;
-        $('.wcards', m).innerHTML = me.cards.length ? me.cards.map(id => cardHTML(id, cardSel.includes(id))).join('') : '<p class="muted">Conquiste pelo menos um território para ganhar uma carta no fim do turno.</p>';
+        $('.wcards', m).innerHTML = me.cards.length ? me.cards.map(id => cardHTML(id, cardSel.includes(id))).join('') : `<p class="muted">${st.mode === 'quick' ? 'Conquiste um território que nunca foi seu para ganhar uma carta. Territórios iniciais e reconquistas não contam.' : 'Conquiste pelo menos um território para ganhar uma carta no fim do turno.'}</p>`;
       }
       const canTrade = !blocked() && !st.result && st.players[st.turn].id === Room.myId && st.phase === 'place';
-      const ok = War.validSet(cardSel), reward = War.tradeReward(st.trades, cardSel);
+      const ok = War.validSet(cardSel), reward = War.tradeReward(st.trades, cardSel, st.mode);
       const five = ok && cardSel.length === 5;
       const own = cardSel.filter(c => War.CARDS[c].terr && st.owner[War.CARDS[c].terr] === Room.myId).length;
       $$('[data-card]', m).forEach(b => {
@@ -9627,7 +9755,9 @@ const WarUI = (() => {
   function objectiveModal(room) {
     const st = view(room), me = st.players.find(p => p.id === Room.myId); if (!me || me.obj == null) return;
     const o = War.objectiveOf(st, me), orig = War.OBJECTIVES[me.obj];
-    UI.modal(`<div class="wobj"><span class="wobj-tag">${icon('target')} OBJETIVO SECRETO</span><p>${esc(o.text)}</p>
+    const progress = War.objectiveProgress(st, me);
+    UI.modal(`<div class="wobj war-mission"><span class="wobj-tag">${icon('target')} OBJETIVO SECRETO${st.mode === 'quick' ? ' · MODO RÁPIDO' : ''}</span>${o.name ? `<h2>${esc(o.name)}</h2><p class="war-mission-brief">${esc(o.brief)}</p>` : `<p>${esc(o.text)}</p>`}
+      <ul class="war-mission-goals">${progress.map(g => `<li class="${g.done ? 'done' : ''}"><div><span>${esc(g.label)}</span><b>${Math.min(g.current, g.target)} / ${g.target}</b></div><progress value="${Math.min(g.current, g.target)}" max="${g.target}" aria-label="${esc(g.label)}"></progress></li>`).join('')}</ul>
       ${o.id !== orig.id ? `<small class="muted">Seu objetivo original era: “${esc(orig.text.split('.')[0])}.” — como não dá mais para cumpri-lo, agora vale conquistar 24 territórios.</small>` : ''}
       <small class="muted">Não mostre a ninguém! Você vence assim que cumprir este objetivo.</small></div>`);
   }
@@ -9654,13 +9784,15 @@ const WarUI = (() => {
 
   // ---------- regras e resultado ----------
   function rulesModal() {
-    const C = WAR_MAP.continents;
+    const C = WAR_MAP.continents, quick = Room.room?.state?.mode === 'quick';
     UI.modal(`<h2>${icon('rules')} Como jogar Supremacia</h2><ul class="rules-list small">
+      ${quick ? '<li><b>Modo Rápido:</b> trocas com crescimento reduzido e cartas apenas por conquistas inéditas. A partida termina quando alguém cumpre seu objetivo, sem limite de duração.</li><li><b>Cartas por conquista inédita:</b> no máximo uma por turno, apenas se conquistar um território que nunca foi seu. Territórios da distribuição inicial e reconquistas não rendem carta. O histórico é individual.</li>' : ''}
       <li><b>Objetivo:</b> cada jogador recebe um <b>objetivo secreto</b> (🎯). Vence quem cumprir o seu primeiro.</li>
       <li><b>Início:</b> os 42 territórios são sorteados entre os jogadores, com 1 exército em cada. Na <b>1ª rodada</b> cada um só posiciona exércitos; os ataques começam na 2ª.</li>
-      <li><b>Sua vez, nesta ordem:</b> 1) recebe e posiciona exércitos; 2) ataca, se quiser; 3) desloca exércitos, se quiser; 4) recebe uma carta, se conquistou pelo menos um território.</li>
+      <li><b>Sua vez, nesta ordem:</b> 1) recebe e posiciona exércitos; 2) ataca, se quiser; 3) desloca exércitos, se quiser; 4) recebe uma carta, se conquistou pelo menos um território${quick ? ' que nunca foi seu' : ''}.</li>
       <li><b>Exércitos recebidos:</b> seus territórios ÷ 2 (parte inteira, mínimo 3) + bônus de cada continente inteiro que você tiver (colocados obrigatoriamente nele): ${Object.values(C).map(c => `${c.name} ${c.bonus}`).join(', ')}.</li>
-      <li><b>Troca de cartas:</b> 3 com figuras iguais ou 3 diferentes (●■▲, o ★ curinga vale qualquer uma). Valem 4, 6, 8, 10, 12, 15, 20, 25… exércitos, em sequência contando todas as trocas do jogo, + 2 em cada território das cartas que seja seu. Com 5 cartas a troca é obrigatória. Também é possível entregar 5 cartas com o mesmo símbolo (sem curingas) para receber o dobro do valor normal da troca, sem exigir o mesmo continente. Os bônus de 50% e de dobro não se acumulam.</li>
+      <li><b>Troca de cartas:</b> 3 com figuras iguais ou 3 diferentes (●■▲, o ★ curinga vale qualquer uma). Valem ${quick ? '4, 6, 8, 10, 12, 15, 16, 17… (depois de 15, +1 por troca)' : '4, 6, 8, 10, 12, 15, 20, 25…'} exércitos, em sequência contando todas as trocas do jogo, + 2 em cada território das cartas que seja seu. Com 5 cartas a troca é obrigatória. Também é possível entregar 5 cartas com o mesmo símbolo (sem curingas) para receber o dobro do valor normal da troca, sem exigir o mesmo continente. Os bônus de 50% e de dobro não se acumulam.</li>
+      <li><b>Novas missões:</b> rotas estratégicas, blocos conectados, fortalezas, presença em vários continentes e ofensivas em um turno. As metas de expansão se ajustam ao número de jogadores. Os requisitos da missão devem estar cumpridos ao mesmo tempo; acompanhe seu progresso no objetivo secreto.</li>
       <li><b>Bônus continental:</b> troque 3 cartas com o mesmo símbolo e do mesmo continente para receber 50% a mais sobre o valor normal da troca. Frações de soldado são arredondadas para baixo. Curingas não ativam esse bônus.</li>
       <li><b>Ataque:</b> só a vizinhos (fronteira ou linha pontilhada). Precisa de pelo menos 2 exércitos no território de origem — 1 sempre fica de ocupação. Atacante joga até 3 dados vermelhos, defensor até 3 azuis (incluindo o de ocupação). Compara-se o maior com o maior, o segundo com o segundo…; <b>empate é da defesa</b>. Cada comparação perdida tira 1 exército.</li>
       <li><b>Conquista:</b> se o território ficar sem exércitos, é seu: entram no mínimo 1 e no máximo os que participaram do último ataque. Dá para seguir atacando a partir dele.</li>
@@ -18995,7 +19127,7 @@ const Room = (() => {
     isHost = true; myId = me.username;
     Net.on('error', onError);
     Net.host(code => {
-      room = { code, hostId: myId, game, settings: { startMoney: ECON.START, maxRounds: 30, variant: 'diplomata', respondSec: 15, turnSec: 90, goal: 7, answerSec: 60, gamble: true, reboot: false, swap: true }, players: [{ ...fromProfile(me), ready: true, ...(game === 'ludo' || game === 'war' || game === 'arq' || game === 'patrimonio' ? { seat: 0 } : {}) }], chat: [], phase: 'lobby', state: null };
+      room = { code, hostId: myId, game, settings: { startMoney: ECON.START, maxRounds: 30, variant: 'diplomata', respondSec: 15, turnSec: 90, warMode: 'quick', goal: 7, answerSec: 60, gamble: true, reboot: false, swap: true }, players: [{ ...fromProfile(me), ready: true, ...(game === 'ludo' || game === 'war' || game === 'arq' || game === 'patrimonio' ? { seat: 0 } : {}) }], chat: [], phase: 'lobby', state: null };
       sysChat(`Sala ${code} criada. Compartilhe o código com seus amigos!`);
       onReady(code); commit();
     }, (peerId, msg) => handle(peerId, msg), (pid, peerId) => {
@@ -19189,6 +19321,7 @@ const Room = (() => {
       case 'settings': {
         if (!hostOnly || room.phase !== 'lobby') return;
         const s = msg.settings || {};
+        if ('warMode' in s && (room.game !== 'war' || !['classic', 'quick'].includes(s.warMode))) return;
         // Ludo: 4 (cruz) ou 6 (hexágono) lugares; não dá para diminuir com mais gente na sala que lugares
         if ('seats' in s) {
           if (room.game !== 'ludo' || ![4, 6].includes(s.seats)) return;
@@ -19620,7 +19753,9 @@ const UI = (() => {
             <label class="chk"><input type="checkbox" id="set-swap" ${room.settings.swap !== false ? 'checked' : ''} ${host ? '' : 'disabled'}> 🔄 Trocar até 2 cartas por rodada com o monte</label>
             <label class="chk"><input type="checkbox" id="set-reboot" ${room.settings.reboot ? 'checked' : ''} ${host ? '' : 'disabled'}> ♻️ Reiniciar o Universo (regra da casa)</label>` : ''}
           ${room.game === 'magnata' ? `<label>Mesa</label><div class="hats">${MAGNATA_TABLES.map(c => `<button class="charpick hatpick ${(room.settings.table || 'wood') === c.id ? 'on' : ''}" data-mtable="${c.id}" ${host ? '' : 'disabled'} title="${esc(c.name)}"><span>${c.icon}</span><small>${esc(c.name)}</small></button>`).join('')}</div>` : ''}
-          ${room.game === 'war' ? `<label>Tempo por ação<select id="set-turn" ${host ? '' : 'disabled'}>${[[60, '1 minuto'], [90, '1 min 30 s (padrão)'], [120, '2 minutos'], [180, '3 minutos'], [0, 'Sem limite']].map(([v, l]) => `<option value="${v}" ${(room.settings.turnSec ?? 90) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
+          ${room.game === 'war' ? `<label>Regras da campanha<select id="set-war-mode" ${host ? '' : 'disabled'}>${[['quick', 'Modo Rápido · conquistas inéditas'], ['classic', 'Clássico · regras tradicionais']].map(([v, l]) => `<option value="${v}" ${(room.settings.warMode || 'classic') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+          <p class="war-mode-description">${room.settings.warMode === 'quick' ? 'Trocas: 4, 6, 8, 10, 12, 15, 16, 17… · Cartas só por territórios inéditos para você · 14 novas missões.' : 'Trocas tradicionais e cartas por qualquer conquista. Objetivos clássicos e 14 novas missões.'}</p>
+          <label>Tempo por ação<select id="set-turn" ${host ? '' : 'disabled'}>${[[60, '1 minuto'], [90, '1 min 30 s (padrão)'], [120, '2 minutos'], [180, '3 minutos'], [0, 'Sem limite']].map(([v, l]) => `<option value="${v}" ${(room.settings.turnSec ?? 90) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
           ${room.game === 'patrimonio' ? PatUI.lobbyRules(room, host) : ''}
           ${room.game === 'ultima' ? UltUI.lobbyRules(room, host) : ''}
           ${room.game === 'arq' ? `<label>Mapa<select id="set-arqmap" ${host ? '' : 'disabled'}>${[['random', 'Aleatório (só as regras de número)'], ['balanced', 'Equilibrado (recursos e números bem distribuídos)']].map(([v, l]) => `<option value="${v}" ${(room.settings.mapMode || 'random') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
@@ -19690,6 +19825,7 @@ const UI = (() => {
         $('#set-arqmap').onchange = e => Room.send({ t: 'settings', settings: { mapMode: e.target.value } });
         $('#set-arqturn').onchange = e => Room.send({ t: 'settings', settings: { arqTurnSec: +e.target.value } });
       } else if (room.game === 'war') {
+        $('#set-war-mode').onchange = e => Room.send({ t: 'settings', settings: { warMode: e.target.value } });
         $('#set-turn').onchange = e => Room.send({ t: 'settings', settings: { turnSec: +e.target.value } });
       } else if (room.game === 'conjura') {
         $('#set-variant').onchange = e => Room.send({ t: 'settings', settings: { variant: e.target.value } });
