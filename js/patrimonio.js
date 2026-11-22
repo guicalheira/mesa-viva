@@ -1,7 +1,6 @@
 // Patrimônio na sala: liga o motor (índices, eventos) ao padrão da Mesa Viva (ids, anfitrião decide).
 const Patrimonio = (() => {
-  const E = typeof Engine !== 'undefined' ? Engine : require('./pat-engine.js');
-  const PD_ = typeof PD !== 'undefined' ? PD : require('./pat-data.js');
+  function createGame(E, PD_) {
   const HEX = /^#[0-9a-f]{6}$/i; // a cor vem do perfil de cada um e a tela do jogo a põe direto no HTML
   const RULE_LIST = [
     ['mortgage', 'Hipoteca com juros', 'A dívida sobe a cada volta. Em 6 voltas, o banco toma o lugar e leiloa.'],
@@ -17,14 +16,18 @@ const Patrimonio = (() => {
     ['news', 'Jornal', 'Uma manchete por volta muda o jogo, e a próxima já fica à vista.'],
     ['contracts', 'Contratos secretos', 'Cada um recebe 2 metas ocultas que pagam prêmio ao serem cumpridas.'],
   ];
+  if (PD_.edition === 2) {
+    RULE_LIST.splice(RULE_LIST.findIndex(([k]) => k === 'sponsor'), 1, ['shop', 'Lojinha', 'Ao cair, gire uma vez por R$ 25.000 e ganhe uma carta. Guarde, use ou negocie com os amigos.']);
+    RULE_LIST.find(([k]) => k === 'casino')[2] = 'Sem teto de aposta: até todo o saldo. Vermelho 2×, preto 3×, número 30× e verde 40×.';
+  }
   const LOG = 40, INTRO_MS = 8000; // abertura com o sorteio da ordem nos dados
   // quanto cada evento leva na tela: o anfitrião espera isso antes de um bot jogar ou o relógio correr
-  const DUR = { turn: 900, dice: 2300, jail: 2500, free: 500, pay: 900, gain: 700, card: 3200, offerbuy: 500, bought: 1400, auction: 700, declined: 300, bid: 400, passbid: 150, sold: 1500, unsold: 600, build: 900, sellb: 300, mortgage: 350, offered: 300, trade: 800, tradeNo: 300, bankrupt: 2500, pux: 600, blitz: 2500, blitzOk: 800, casinoLand: 800, casinoSpin: 5000, casinoBet: 500, casinoResult: 2500, sponsorLand: 1000, sponsor: 2000, travel: 3000, passused: 900, creditAsk: 300, creditOk: 1100, creditNo: 400, lien: 1100, seized: 1100, reajuste: 1000, news: 2700, contract: 1200, note: 400 };
+  const DUR = { shopLand: 800, shopSpin: 2800, itemUsed: 700, teleport: 1200, turn: 900, dice: 2300, jail: 2500, free: 500, pay: 900, gain: 700, card: 3200, offerbuy: 500, bought: 1400, auction: 700, declined: 300, bid: 400, passbid: 150, sold: 1500, unsold: 600, build: 900, sellb: 300, mortgage: 350, offered: 300, trade: 800, tradeNo: 300, bankrupt: 2500, pux: 600, blitz: 2500, blitzOk: 800, casinoLand: 800, casinoSpin: 5000, casinoBet: 500, casinoResult: 2500, sponsorLand: 1000, sponsor: 2000, travel: 3000, passused: 900, creditAsk: 300, creditOk: 1100, creditNo: 400, lien: 1100, seized: 1100, reajuste: 1000, news: 2700, contract: 1200, note: 400 };
   const durOf = e => (e.t === 'move' ? 300 + Math.abs(e.steps) * 230 : DUR[e.t] || 0);
-  const BOT_WAIT = { build: 420, lift: 420, mortgage: 420, sell: 420, offer: 700, roll: 750, buy: 1100, decline: 1000, end: 550, accept: 900, reject: 900, bail: 750, usecard: 750, bankrupt: 1000, pux: 420, repay: 500, sponsor: 1000, nosponsor: 500, bet: 1200, nobet: 500, jailgo: 900, jeitinho: 900, travel: 900, stay: 500, fiado: 800, creditYes: 900, creditNo: 900, creditCounter: 900 };
+  const BOT_WAIT = { shopspin: 900, shopskip: 500, useitem: 600, payrent: 700, build: 420, lift: 420, mortgage: 420, sell: 420, offer: 700, roll: 750, buy: 1100, decline: 1000, end: 550, accept: 900, reject: 900, bail: 750, usecard: 750, bankrupt: 1000, pux: 420, repay: 500, sponsor: 1000, nosponsor: 500, bet: 1200, nobet: 500, jailgo: 900, jeitinho: 900, travel: 900, stay: 500, fiado: 800, creditYes: 900, creditNo: 900, creditCounter: 900 };
   // ausente ou sem tempo: a saída que não gasta nem arrisca nada
-  const SAFE = { casino: 'nobet', sponsor: 'nosponsor', blitz: 'jailgo', travel: 'stay', buy: 'decline', roll: 'roll', post: 'end' };
-  const LAST_RESORT = { casino: 'nobet', sponsor: 'nosponsor', blitz: 'jailgo', travel: 'stay', debt: 'bankrupt', auction: 'pass', buy: 'decline', roll: 'roll' };
+  const SAFE = { shop: 'shopskip', rent: 'payrent', casino: 'nobet', sponsor: 'nosponsor', blitz: 'jailgo', travel: 'stay', buy: 'decline', roll: 'roll', post: 'end' };
+  const LAST_RESORT = { shop: 'shopskip', rent: 'payrent', casino: 'nobet', sponsor: 'nosponsor', blitz: 'jailgo', travel: 'stay', debt: 'bankrupt', auction: 'pass', buy: 'decline', roll: 'roll' };
   const idx = (st, id) => st.players.findIndex(p => p.id === id);
 
   // depois de qualquer mudança: publica os eventos e acerta os relógios
@@ -57,7 +60,7 @@ const Patrimonio = (() => {
     const st = E.newGame(seats.map((p, i) => ({ name: p.name, char: p.char, bot: !!p.bot, token: token.get(p.id), color: HEX.test(p.color) ? p.color : PD_.COLORS[i] })), undefined, { ...E.RULES, ...room.settings.patRules });
     st.players.forEach((p, i) => { p.id = seats[i].id; });
     if (shuffle) st.opening = room.players.map(p => ({ id: p.id, rolls: rolls.get(p.id) }));
-    Object.assign(st, { gameId: 'pat-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), log: [], evN: 0, turnSec: room.settings.turnSec ?? 90, busyUntil: Date.now() + INTRO_MS });
+    Object.assign(st, { gameId: (PD_.edition === 2 ? 'pat2-' : 'pat-') + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), log: [], evN: 0, turnSec: room.settings.turnSec ?? 90, busyUntil: Date.now() + INTRO_MS });
     settle(st);
     return st;
   }
@@ -111,6 +114,8 @@ const Patrimonio = (() => {
   // contratos são secretos: cada um só recebe os seus
   const viewFor = (st, pid) => ({ ...st, players: st.players.map(p => (p.id === pid ? p : { ...p, contracts: [] })) });
 
-  return { RULE_LIST, kick, newGame, act, botAction, afkAction, botDelay, nextDeadline, timeout, viewFor };
+  return { createGame, RULE_LIST, kick, newGame, act, botAction, afkAction, botDelay, nextDeadline, timeout, viewFor };
+  }
+  return createGame(typeof Engine !== 'undefined' ? Engine : require('./pat-engine.js'), typeof PD !== 'undefined' ? PD : require('./pat-data.js'));
 })();
 if (typeof module !== 'undefined') module.exports = Patrimonio;

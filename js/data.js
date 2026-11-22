@@ -1,6 +1,6 @@
 // ===== Dados estáticos: artes, personagens, tabuleiro, cartas =====
 // versão do jogo: mude a cada publicação (avisa quem estiver com a página antiga aberta)
-const APP_VERSION = '2026.11.16-war-quick-1';
+const APP_VERSION = '2026.11.22-patrimonio2-2';
 const IMG = {
   char_vitoria: 'assets/char_vitoria.webp',
   char_otavio: 'assets/char_otavio.webp',
@@ -94,6 +94,7 @@ const GAME_LIBRARY = [
   { id: 'cah', name: 'Cartas Contra a Humanidade', desc: 'O jogo de cartas para pessoas horríveis: complete a frase da carta preta com a resposta mais absurda.', players: '3–12', cover: IMG.cover_cah, ready: true },
   { id: 'war', name: 'Supremacia', desc: 'Guerra de estratégia pelo mapa-múndi: cumpra seu objetivo secreto conquistando continentes ou destruindo um exército rival.', players: '2–6', cover: IMG.cover_war, ready: true },
   { id: 'patrimonio', name: 'Patrimônio', desc: 'Compre o Brasil, erga do puxadinho ao hotel e leve os amigos à falência, com leilão, cassino, jornal e fiado.', players: '2–8', cover: IMG.cover_patrimonio, ready: true },
+  { id: 'patrimonio2', name: 'Patrimônio 2.0', desc: '52 casas, destinos internacionais, três usinas, cassino sem teto e Lojinha com cartas para usar e negociar.', players: '2–8', cover: IMG.cover_patrimonio, ready: true },
   { id: 'ultima', name: 'Última!', desc: 'Descarte por cor ou símbolo, solte Pula, Volta, +2 e Coringa, e grite "Última!" antes que te peguem.', players: '2–10', cover: IMG.cover_ultima, ready: true },
   { id: 'arq', name: 'Arquipélago', desc: 'Colonize uma ilha tropical: produza madeira, argila, algodão, pedra e peixe, negocie com os amigos e erga vilas e cidades até 10 pontos.', players: '2–6', cover: IMG.cover_arq, ready: true },
   { id: 'domino2', name: 'Dominó', desc: 'Dominó brasileiro em duplas: encaixe as pedras, feche a mesa e bata de carroça, lá e lô ou cruzada.', players: '2–4', cover: IMG.cover_domino, ready: true },

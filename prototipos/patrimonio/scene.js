@@ -1,8 +1,9 @@
 // Patrimônio: o tabuleiro em 3D. Ladrilhos, rua, moldura, peças, dados, construções, câmera e efeitos.
 const Stage = (() => {
-  const TW = 2, TD = 3.4, H = 9, R1 = H + TD, RW = 1.4, R2 = R1 + RW, RF = R2 + .2, RHO1 = 1.4, RHO2 = RHO1 + RW, RC = R1 + RW / 2;
+  const BOARD_SIZE = PD.SQ.length, SIDE_N = BOARD_SIZE / 4, JAIL = Engine.JAIL, SHOP = SIDE_N * 2, BLITZ = SIDE_N * 3;
+  const TW = 2, TD = 3.4, H = (SIDE_N - 1) * TW / 2, R1 = H + TD, RW = 1.4, R2 = R1 + RW, RF = R2 + .2, RHO1 = 1.4, RHO2 = RHO1 + RW, RC = R1 + RW / 2;
   const SIDE = [0, -Math.PI / 2, Math.PI, Math.PI / 2];
-  const sideOf = i => Math.floor(i / 10) % 4;
+  const sideOf = i => Math.floor(i / SIDE_N) % 4;
   let gl, scene, camera, canvas, speed = 1;
   const lin = c => new THREE.Color(c).convertSRGBToLinear();
   const std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: lin(c), roughness: .55, ...o });
@@ -76,7 +77,7 @@ const Stage = (() => {
   const setPanel = w => { PANEL = w; if (gl) fit(); };
   const setHud = on => { hudOn = on; fit(); };
   // textos da fileira de cima: para fora no 3D, como os outros lados; de pé só no 2D. A versão de pé só é desenhada se usada
-  const topRow = on => { for (let i = 21; i < 30 && tiles[i]; i++) { const t = tiles[i]; t.outMap = t.outMap || t.mat.map; t.mat.map = on ? (t.upMap = t.upMap || tex(Art.tile(i, true))) : t.outMap; } };
+  const topRow = on => { for (let i = SIDE_N * 2 + 1; i < SIDE_N * 3 && tiles[i]; i++) { const t = tiles[i]; t.outMap = t.outMap || t.mat.map; t.mat.map = on ? (t.upMap = t.upMap || tex(Art.tile(i, true))) : t.outMap; } };
   const setFlat = on => { topRow(on); cam.flat = on; cam.snap = Math.round((cam.snap ?? cam.user) / (Math.PI / 2)) * (Math.PI / 2) + (on ? 0 : VIEW0.az); cam.back = true; cam.zg = on ? 1 : VIEW0.zg; cam.vx = cam.vz = cam.va = cam.ve = 0; };
   // de perto dá para passear até a ponta do tabuleiro; sem zoom o centro não sai do lugar
   const panLimit = z => RF * Math.max(0, Math.min(.92, (1 - z) * 1.6));
@@ -150,15 +151,15 @@ const Stage = (() => {
   const fromScreen = (px, py, dist = 24) => { const v = new THREE.Vector3(px / innerWidth * 2 - 1, -(py / innerHeight * 2 - 1), .5).unproject(camera); return v.sub(camera.position).normalize().multiplyScalar(dist).add(camera.position); };
 
   // ---------- posições ----------
-  const CORNERS = { 0: [1, 1], 10: [-1, 1], 20: [-1, -1], 30: [1, -1] };
+  const CORNERS = { 0: [1, 1], [SIDE_N]: [-1, 1], [SIDE_N * 2]: [-1, -1], [SIDE_N * 3]: [1, -1] };
   function tilePos(i) {
     if (CORNERS[i]) { const [a, b] = CORNERS[i], m = H + TD / 2; return { x: a * m, z: b * m }; }
-    const s = sideOf(i), k = i - s * 10 - .5, m = H + TD / 2, t = H - k * TW;
+    const s = sideOf(i), k = i - s * SIDE_N - .5, m = H + TD / 2, t = H - k * TW;
     return [{ x: t, z: m }, { x: -m, z: t }, { x: -t, z: -m }, { x: m, z: -t }][s];
   }
   function roadPos(i) { // centro da rua na frente da casa
     if (CORNERS[i]) { const [a, b] = CORNERS[i], c = R1 - RHO1, m = c + (RHO1 + RW / 2) * Math.SQRT1_2; return { x: a * m, z: b * m, tx: a, tz: -b }; }
-    const s = sideOf(i), k = i - s * 10 - .5, t = H - k * TW;
+    const s = sideOf(i), k = i - s * SIDE_N - .5, t = H - k * TW;
     return [{ x: t, z: RC, tx: 1, tz: 0 }, { x: -RC, z: t, tx: 0, tz: 1 }, { x: -t, z: -RC, tx: 1, tz: 0 }, { x: RC, z: -t, tx: 0, tz: 1 }][s];
   }
 
@@ -237,8 +238,8 @@ const Stage = (() => {
     inlay(H + .02, H - .1, .05, .05, .02, .06);
     // ladrilhos
     gStreet = tileGeo(TW - .05, TD - .05); const gCorner = cornerGeo();
-    for (let i = 0; i < 40; i++) {
-      bar(.42 + i / 40 * .5);
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      bar(.42 + i / BOARD_SIZE * .5);
       const q = PD.SQ[i], isC = !!CORNERS[i], map = tex(isC ? Art.corner(i) : Art.tile(i));
       const mat = new THREE.MeshStandardMaterial({ map, roughness: .92, envMapIntensity: .35 }); // fosco: o reflexo apagava o texto
       const p = tilePos(i), g = new THREE.Group(); g.position.set(p.x, 0, p.z); g.rotation.y = SIDE[sideOf(i)]; scene.add(g);
@@ -266,14 +267,22 @@ const Stage = (() => {
     add(new THREE.CylinderGeometry(.018, .018, 2.05, 8), grayMat(), .36, 1.1, -.36 + .72 * 0, g);
     add(new THREE.BoxGeometry(.62, .36, .02), std('#2563eb', { roughness: .7 }), .68, 1.9, -.36, g);
     // Patrocinador: troféu dourado no pedestal com estrela girando
-    g = new THREE.Group(); g.position.set(-.82, 0, -.82); tiles[20].g.add(g);
+    g = new THREE.Group(); g.position.set(-.82, 0, -.82); tiles[SHOP].g.add(g);
+    if (PD.edition === 2) {
+      add(new THREE.BoxGeometry(1.3, 1, 1), std('#f6e3bd'), 0, .65, 0, g);
+      add(new THREE.ConeGeometry(1.1, .55, 4), std('#208a68'), 0, 1.42, 0, g).rotation.y = Math.PI / 4;
+      add(new THREE.BoxGeometry(.4, .65, .05), std('#81522e'), 0, .5, .52, g);
+      for (const dx of [-.45, .45]) add(new THREE.BoxGeometry(.28, .3, .06), std('#75d3df'), dx, .85, .52, g);
+      const card = add(new THREE.BoxGeometry(.42, .58, .06), std('#a667d9'), 0, 2, 0, g); spinners.push(card);
+    } else {
     add(new THREE.BoxGeometry(.72, .22, .72), marble, 0, .13, 0, g); add(new THREE.BoxGeometry(.5, .14, .5), std('#2c9a68', { roughness: .6 }), 0, .31, 0, g);
     const prof = [[.001, 0], [.26, 0], [.26, .05], [.08, .12], [.06, .42], [.14, .5], [.33, .72], [.38, 1.12], [.34, 1.12], [.28, .78], [.001, .6]].map(([a, b]) => new THREE.Vector2(a, b));
     add(new THREE.LatheGeometry(prof, 28), gold, 0, .38, 0, g);
     for (const sx of [-1, 1]) { const h = add(new THREE.TorusGeometry(.17, .03, 10, 20), gold, sx * .39, 1.2, 0, g); h.rotation.y = 0; }
     const star = add(starGeo(.26), gold, 0, 1.9, 0, g); spinners.push(star);
+    }
     // Blitz: cancela listrada, cones e placa de pare
-    g = new THREE.Group(); g.position.set(-.72, 0, -.72); g.rotation.y = Math.PI / 4; tiles[30].g.add(g);
+    g = new THREE.Group(); g.position.set(-.72, 0, -.72); g.rotation.y = Math.PI / 4; tiles[BLITZ].g.add(g);
     const stripe = (w, h, a, b, txt) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.fillStyle = a; x.fillRect(0, 0, w, h); x.fillStyle = b; for (let k = -h; k < w; k += 48) { x.beginPath(); x.moveTo(k, h); x.lineTo(k + 24, h); x.lineTo(k + 24 + h, 0); x.lineTo(k + h, 0); x.fill(); } return tex(c); };
     add(new THREE.BoxGeometry(2, .17, .07), std('#ffffff', { map: stripe(384, 32, '#f4f1e8', '#c8342e'), roughness: .6 }), 0, .78, 0, g);
     for (const sx of [-1, 1]) { add(new THREE.BoxGeometry(.11, .86, .11), std('#2a2a2e', { roughness: .5 }), sx * .88, .43, 0, g); add(new THREE.SphereGeometry(.075, 12, 10), new THREE.MeshStandardMaterial({ color: lin('#ff5a45'), emissive: lin('#ff2a1a'), emissiveIntensity: .9 }), sx * .88, .93, 0, g); }
@@ -286,7 +295,7 @@ const Stage = (() => {
   const grayMat = () => G.pole || (G.pole = std('#6b6b70', { roughness: .5, metalness: .4 }));
   function buildJail(brass) {
     // grades de ferro: sobem para o preso entrar e descem atrás dele
-    const t = tiles[10], iron = std('#20201f', { metalness: .7, roughness: .45 }), m = TD / 2, inner = -m + TD * (610 / 870);
+    const t = tiles[JAIL], iron = std('#20201f', { metalness: .7, roughness: .45 }), m = TD / 2, inner = -m + TD * (610 / 870);
     jailGate = new THREE.Group(); t.g.add(jailGate);
     const g = new THREE.CylinderGeometry(.035, .035, 1.1, 8);
     for (let k = 0; k < 9; k++) { const a = -m + .12 + k * ((inner + m - .14) / 8); add(g, iron, a, .55, inner, jailGate); add(g, iron, inner, .55, a, jailGate); }
@@ -437,7 +446,7 @@ const Stage = (() => {
     tw(k === 'pular' ? 620 : 950, (_, p) => { m.position.y = y0 + Math.abs(Math.sin(p * Math.PI * hops)) * h; m.rotation.y = r0 + p * turns * Math.PI * 2; }).then(() => { m.position.y = y0; m.rotation.y = r0; s.busy = false; });
   }
   function restSpot(i, order, n, inJail) {
-    if (inJail) { const t = tiles[10], m = TD / 2, a = -m + .75 + (order % 3) * .62, b = -m + .75 + Math.floor(order / 3) * .62, c = Math.cos(t.g.rotation.y), s = Math.sin(t.g.rotation.y); return { x: t.g.position.x + a * c + b * s, z: t.g.position.z - a * s + b * c }; }
+    if (inJail) { const t = tiles[JAIL], m = TD / 2, a = -m + .75 + (order % 3) * .62, b = -m + .75 + Math.floor(order / 3) * .62, c = Math.cos(t.g.rotation.y), s = Math.sin(t.g.rotation.y); return { x: t.g.position.x + a * c + b * s, z: t.g.position.z - a * s + b * c }; }
     // até 3 em fila na rua; a partir de 4, duas filas
     const r = roadPos(i), row = n > 3 ? Math.ceil(n / 2) : n || 1, span = n === 2 ? .98 : n === 3 ? .8 : n > 6 ? .62 : .72, col = order % row, line = Math.floor(order / row), a = (col - (row - 1) / 2) * span, off = n > 3 ? (line - .5) * .62 : 0;
     const nx = -r.tz, nz = r.tx; return { x: r.x + r.tx * a + nx * off, z: r.z + r.tz * a + nz * off };
@@ -462,7 +471,7 @@ const Stage = (() => {
   const followOn = t => { cam.follow = t.m; cam.hold = Infinity; }, followOff = () => { cam.hold = .3; };
   async function walk(idx, from, n, onStep) {
     const t = tokens[idx], dir = Math.sign(n), total = Math.abs(n); if (!total) return;
-    followOn(t); const at = i => (from + dir * i + 400) % 40, final = at(total); t.moving = true; t.inJail = false; t.slide++; layoutTokens(false); t.m.quaternion.identity();
+    followOn(t); const at = i => (from + dir * i + BOARD_SIZE * 10) % BOARD_SIZE, final = at(total); t.moving = true; t.inJail = false; t.slide++; layoutTokens(false); t.m.quaternion.identity();
     // a vaga final já conta com quem está lá; os outros só abrem espaço quando esta pisar
     t.moving = false; const realAt = t.at; t.at = final; const end = spots()[idx]; t.at = realAt; t.moving = true;
     const pts = [t.m.position.clone().setY(0)];
@@ -510,8 +519,8 @@ const Stage = (() => {
   }
   // prisão: as grades sobem, a peça entra num salto baixo, as grades descem e o giroflex pisca
   async function arrest(idx, onShut) {
-    blinkLamps(2000); gate(true); await fly(idx, 10, true, 720, 3.2);
-    await gate(false); onShut && onShut(); const p = tilePos(10); dust(p.x, p.z, 5, 0xbbbbbb);
+    blinkLamps(2000); gate(true); await fly(idx, JAIL, true, 720, 3.2);
+    await gate(false); onShut && onShut(); const p = tilePos(JAIL); dust(p.x, p.z, 5, 0xbbbbbb);
   }
   const release = async () => { await gate(true); await wait(260); await gate(false); };
   const syncToken = (idx, at, inJail, out) => { const t = tokens[idx]; t.at = at; t.inJail = inJail; t.out = out; t.m.visible = !out; };
@@ -1029,14 +1038,14 @@ const Stage = (() => {
     if (!on) {
       if (!car || car.leaving) return; const c = car; c.leaving = true;
       if (now) { scene.remove(c); car = null; return; }
-      await drive(roadPath([29, 30, 31, 33, 35], c.position.y), 1100, k => k * k, u => c.scale.setScalar(1 - Math.max(0, u - .7) / .3));
+      await drive(roadPath([BLITZ - 1, BLITZ, BLITZ + 1, BLITZ + 3, BLITZ + 5], c.position.y), 1100, k => k * k, u => c.scale.setScalar(1 - Math.max(0, u - .7) / .3));
       scene.remove(c); if (car === c) car = null; return;
     }
     if (car) scene.remove(car);
-    const t = tokens.find(x => x && x.at === 30 && !x.out), y = (t ? baseY(t) : .4) - .1;
+    const t = tokens.find(x => x && x.at === BLITZ && !x.out), y = (t ? baseY(t) : .4) - .1;
     car = carModel(); scene.add(car);
-    await drive(roadPath([24, 26, 28, 29], y), 760, ease.out);
-    const p = roadPos(29); dust(p.x + .5, p.z, 6, 0xcfd8c8); shake(.22);
+    await drive(roadPath([BLITZ - 6, BLITZ - 4, BLITZ - 2, BLITZ - 1], y), 760, ease.out);
+    const p = roadPos(BLITZ - 1); dust(p.x + .5, p.z, 6, 0xcfd8c8); shake(.22);
     if (t) { const y0 = t.m.position.y; t.moving = true; await tw(280, k => { t.m.position.y = y0 + Math.sin(k * Math.PI) * .6; }); t.m.position.y = y0; t.moving = false; }
   }
   function updateFx(dt) {

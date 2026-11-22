@@ -5,6 +5,14 @@ Jogos: **Magnata**, de compra e venda de propriedades — leilões, níveis de c
 
 **Jogar:** https://guicalheira.github.io/mesa-viva/ — crie uma sala e mande o código de 5 letras para os amigos.
 
+**Patrimônio 2.0** é uma segunda opção no catálogo; o Patrimônio original continua disponível. O tabuleiro tem 52 casas, com três casas extras em cada lado. Entram Porto Alegre (R$ 50 mil), Gramado (R$ 55 mil), Canela (R$ 60 mil), Lisboa (R$ 115 mil), Porto (R$ 125 mil), Balneário Camboriú (R$ 220 mil), Miami (R$ 320 mil), Nova York (R$ 380 mil) e Dubai (R$ 450 mil). Lisboa e Porto formam um grupo de duas propriedades com a Usina Hidrelétrica no meio. Balneário Camboriú forma um grupo sozinha, permitindo construir assim que for comprada. As três usinas juntas cobram 10 vezes a soma dos dados. O segundo cassino e um novo Imprevisto ficam perto de São Paulo. Imposto de Renda fica entre as novas casas do Sul; a Sorte do último lado fica entre Miami e Nova York.
+
+O cassino do 2.0 permite apostar até todo o saldo, sem o teto de R$ 50 mil. Vermelho paga 2×, preto 3×, número 30× e verde (zero) 40×; notícias ainda podem aumentar o prêmio de vermelho e preto. Os valores são o retorno total da aposta vencedora.
+
+A **Lojinha** substitui o Patrocinador no 2.0. Ao cair, cada jogador pode pagar R$ 25 mil para uma rodada da roleta, com 14 cartas de chances iguais: descontos de 25%, 50% ou 100% no aluguel; descontos de 25% ou 50% em terrenos; obra pela metade; Cassino 3×; viagens ao Marco Zero, Lojinha, Rio, São Paulo ou Miami; alvará de soltura; e R$ 50 mil do banco. As cartas ficam em **Minhas cartas**, sem limite de quantidade, e cada exemplar pode ser selecionado na tela **Negociar**, junto com dinheiro e propriedades. Cada carta vale uma utilização. Descontos podem ser ativados antecipadamente; cartas de aluguel também podem ser escolhidas antes de pagar. Não acumulam descontos do mesmo tipo. Cassino 3× triplica o prêmio e é consumida na próxima aposta mesmo se ela perder. Viagens substituem o lançamento, resolvem a casa de destino e só a carta Marco Zero dá salário. Sorte e Imprevisto também podem mandar direto à Lojinha, sem salário.
+
+Dados da nova edição: `js/pat2-data.js`; integração com a sala: `js/patrimonio2.js`. O motor e a apresentação são compartilhados por fábricas com dados separados. Validação: `node tests/patrimonio2.test.js`, `node tests/patrimonio.test.js` e `node prototipos/patrimonio/test_engine.js`.
+
 - `index.html` + `style.css` + `js/` — código-fonte (abra via servidor local: `python -m http.server 8765`)
 - `dist/mesa-viva.html` — versão em **arquivo único** (artes embutidas). Mande para os amigos ou hospede (GitHub Pages, Netlify, etc.)
 - `assets/` — artes geradas no ComfyUI (Stability Matrix) com **Z-Image Turbo**

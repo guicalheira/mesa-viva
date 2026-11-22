@@ -8,8 +8,9 @@ const Art = (() => {
   // sem internet as fontes não chegam: depois de alguns segundos segue com a fonte reserva
   // imagens geradas para as casas das nossas cidades; o valor é onde fica o assunto na largura da imagem, para o recorte
   const ICONS = new Set(['energia', 'agua', 'aviao', 'sorte', 'imprevisto', 'cassino', 'receita']);
+  const EMBEDDED_PHOTOS = null; // tools/build.py inclui as artes para o iframe srcdoc.
   const PHOTO_FOCUS = Object.fromEntries('alter veropeso canoa jeri iracema petrolina terezinha recife descoberto taguatinga esplanada saopedro cristo pelourinho santos campinas paulista tresmarias felicio pampulha paraty copacabana lula energia agua aviao sorte imprevisto cassino receita'.split(' ').map(id => [id, .5])), photos = {};
-  const loadPhotos = () => Promise.all(Object.keys(PHOTO_FOCUS).map(id => new Promise(res => { if (photos[id]) return res(); const i = new Image(); i.onload = () => { photos[id] = i; res(); }; i.onerror = res; i.src = `img/${id}.${ICONS.has(id) ? 'png' : 'jpg'}`; })));
+  const loadPhotos = () => Promise.all(Object.keys(PHOTO_FOCUS).map(id => new Promise(res => { if (photos[id]) return res(); const i = new Image(); i.onload = () => { photos[id] = i; res(); }; i.onerror = res; i.src = EMBEDDED_PHOTOS?.[id] || `img/${id}.${ICONS.has(id) ? 'png' : 'jpg'}`; })));
   function coverPhoto(x, id, ax, ay, aw, ah) { x.imageSmoothingQuality = 'high'; const i = photos[id], s = Math.max(aw / i.width, ah / i.height), sw = aw / s, sh = ah / s, sx = Math.max(0, Math.min(i.width - sw, i.width * PHOTO_FOCUS[id] - sw / 2)); x.drawImage(i, sx, (i.height - sh) / 2, sw, sh, ax, ay, aw, ah); }
   const ready = () => Promise.all([loadPhotos(), Promise.race([Promise.all(['400 40px "Lilita One"', '800 40px Nunito', '900 40px Nunito'].map(f => document.fonts.load(f, 'Patrimônio R$ 123'))).catch(() => {}), new Promise(r => setTimeout(r, 4000))])]);
 
@@ -148,6 +149,13 @@ const Art = (() => {
       f('#1d3f86', R(-5, -5, 110, 120)); for (const [a, b, s] of stars) f(BRASS, `M${a} ${b - s * 2}L${a + s * .5} ${b - s * .5}L${a + s * 2} ${b}L${a + s * .5} ${b + s * .5}L${a} ${b + s * 2}L${a - s * .5} ${b + s * .5}L${a - s * 2} ${b}L${a - s * .5} ${b - s * .5}Z`);
       st(BRASS, .8, `${C(50, 50, 32)}`); x.save(); x.fillStyle = CREAM; x.font = `900 62px ${SERIF}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('?', 50, 54); x.restore();
     },
+    lojinha(f, st, p) {
+      f('#e5f4e9', R(-5, -5, 110, 110)); f('#f2d9aa', R(14, 35, 72, 58));
+      f('#1d7c5d', 'M8 36L20 10H80L92 36Z');
+      for (let i = 0; i < 5; i++) f(i % 2 ? CREAM : '#2f9e77', R(12 + i * 15, 36, 15, 12));
+      f('#8a572e', R(42, 61, 20, 32)); f('#78bacc', R(21, 57, 16, 20)); f('#a667d9', R(66, 56, 14, 22));
+      f(BRASS, C(73, 67, 4));
+    },
     cassino(f, st, p) {
       f('#1f5a3f', R(-5, -5, 110, 120)); f('#6b3f1d', C(50, 58, 36));
       for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283, b = (i + 1) / 12 * 6.283, q = 31; f(i % 2 ? '#1f1a16' : '#c0392b', `M50 58L${50 + Math.cos(a) * q} ${58 + Math.sin(a) * q}L${50 + Math.cos(b) * q} ${58 + Math.sin(b) * q}Z`); }
@@ -208,7 +216,7 @@ const Art = (() => {
     const hasBand = q.k === 'prop', bh = hasBand ? 124 : 0;
     if (hasBand) { moduleBand(x, 0, 0, W, bh, p.c, p.d, 62); x.fillStyle = 'rgba(31,26,22,.5)'; x.fillRect(0, bh - 4, W, 4); }
     // na visão 2D a fileira de cima fica de pé para quem olha da frente: a faixa continua para dentro, o texto é que gira
-    const turn = upright && i > 20 && i < 30;
+    const turn = upright && i > PD.SQ.length / 2 && i < PD.SQ.length * .75;
     if (turn) { x.save(); x.translate(W, bh + H); x.rotate(Math.PI); }
     const big = hasBand ? 212 : SHAPES[q.art] ? 262 : 226, aw = Math.round(big * .8), ay = (hasBand ? bh + 30 : SHAPES[q.art] ? 38 : 56) + (big - aw) / 2; // sem os cantos, o desenho pede mais área; 80% dela deixa o ladrilho respirar
     niche(x, q.art, q.g, (W - aw) / 2, ay, aw, aw, q.k === 'util' ? 'util' : q.art);
@@ -251,6 +259,12 @@ const Art = (() => {
       x.fillStyle = '#f2e3c4'; x.font = `900 76px ${SERIF}`; x.fillText('DELEGACIA', 305, 560);
       x.font = `600 58px ${SERIF}`; x.fillStyle = INK;
       x.fillText('Só de visita', 305, 725); x.save(); x.translate(725, 305); x.rotate(-Math.PI / 2); x.fillText('Só de visita', 0, 18); x.restore();
+    } else if (q.k === 'shop') {
+      diag(() => {
+        x.save(); x.translate(-250, -360); x.scale(5, 5); drawScene(x, 'lojinha', 'neutro'); x.restore();
+        x.fillStyle = INK; x.font = `900 110px ${SERIF}`; x.fillText('Lojinha', 0, 225);
+        x.font = `800 42px ${SANS}`; x.fillText('GIRE POR R$ 25.000', 0, 295);
+      });
     } else if (q.k === 'free') {
       diag(() => {
         x.save(); x.translate(-300, -340); x.scale(6, 6);
