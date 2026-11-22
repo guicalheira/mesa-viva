@@ -4,7 +4,8 @@
   const $ = s => document.querySelector(s);
   const send = m => parent.postMessage(m, '*');
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const brl = Engine.brl, SQ = PD.SQ, G = PD.GROUPS;
+  const brl = Engine.brl, SQ = PD.SQ, G = PD.GROUPS, V2 = PD.edition === 2;
+  const itemName = c => Engine.itemDef(c.id).name;
   let st = null, disp = [], busy = false, base = 1, deedOpen = null;
   // ME: meu lugar na mesa (-1 assistindo). queue: eventos da rede ainda por animar
   let ME = -1, queue = [], seen = 0, needSnap = false, shownTurn = 0, skew = 0, faces = {}, isHost = false, ctlKey = null, deedAgain = null, finished = false;
@@ -23,9 +24,9 @@
   // carta pequena de um lugar: faixa da cor do grupo, desenho, nome e o que rende agora
   const pcard = (s, { sel, attrs = '', tag = 'button', off, price } = {}) => { const q = SQ[s], pr = st.props[s]; return `<${tag} class="pc ${sel ? 'sel' : ''} ${pr.m ? 'm' : ''}" data-s="${s}" style="--gc:${G[q.g].c}" ${attrs} ${off ? 'disabled title="Grupo com construção ou garantia de fiado não entra"' : ''}><span class="pc-art"><img alt="" src="${artURL(s)}"></span><b>${esc(q.name)}</b><small>${placeStatus(s)}</small>${price ? `<small class="pc-price">Tabela: <b>${brl(q.price)}</b></small>` : ''}${pips(s)}</${tag}>`; };
   const CAS_GAMES = [
-    ['roleta', 'Roleta', 'até 30×', '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="#6a3419" stroke="#3a2614" stroke-width="2"/><circle cx="24" cy="24" r="17" fill="#17151a"/><g fill="#c8201f"><path d="M24 7a17 17 0 0 1 12 5L24 24z"/><path d="M41 24a17 17 0 0 1-5 12L24 24z"/><path d="M24 41a17 17 0 0 1-12-5l12-12z"/><path d="M7 24a17 17 0 0 1 5-12l12 12z"/></g><circle cx="24" cy="24" r="8" fill="#e0b44e" stroke="#3a2614" stroke-width="1.5"/><path d="M24 18v12M18 24h12" stroke="#7a5208" stroke-width="2"/><circle cx="35" cy="11" r="3" fill="#fff" stroke="#3a2614"/></svg>'],
+    ['roleta', 'Roleta', V2 ? 'até 40×' : 'até 30×', '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="#6a3419" stroke="#3a2614" stroke-width="2"/><circle cx="24" cy="24" r="17" fill="#17151a"/><g fill="#c8201f"><path d="M24 7a17 17 0 0 1 12 5L24 24z"/><path d="M41 24a17 17 0 0 1-5 12L24 24z"/><path d="M24 41a17 17 0 0 1-12-5l12-12z"/><path d="M7 24a17 17 0 0 1 5-12l12 12z"/></g><circle cx="24" cy="24" r="8" fill="#e0b44e" stroke="#3a2614" stroke-width="1.5"/><path d="M24 18v12M18 24h12" stroke="#7a5208" stroke-width="2"/><circle cx="35" cy="11" r="3" fill="#fff" stroke="#3a2614"/></svg>'],
   ];
-  const groupsOrder = ['terra', 'ceu', 'ipe', 'laranja', 'vermelho', 'amarelo', 'mata', 'anil', 'rail', 'util'];
+  const groupsOrder = ['terra', ...(V2 ? ['sul'] : []), 'ceu', 'ipe', ...(V2 ? ['portugal'] : []), 'laranja', 'vermelho', 'amarelo', ...(V2 ? ['unico'] : []), 'mata', 'anil', ...(V2 ? ['mundo'] : []), 'rail', 'util'];
 
   // ---------- início ----------
   const faceOf = p => faces[p.id] || '../../assets/char_vitoria.webp';
@@ -36,7 +37,7 @@
     const el = document.createElement('div'); el.id = 'intro';
     const op = st.opening && st.opening.every(o => st.players.some(p => p.id === o.id)) ? st.opening : null;
     const order = st.players, lobby = op ? op.map(o => order.find(p => p.id === o.id)) : order; // st é trocado durante a abertura
-    el.innerHTML = `<div class="in-logo">Patrimônio</div><div class="in-sub">${op ? 'Quem tirar mais nos dados começa!' : 'A partida vai começar!'}</div><div class="in-players">${lobby.map((p, i) => `<div class="in-p" style="--c:${p.color};--i:${i}">${faceHTML(p, 76)}<b>${esc(p.name)}</b>${op ? '<div class="in-dice"></div><em class="in-sum"></em><span class="in-rank"></span>' : `<small>${p.bot ? 'Bot' : 'Jogador'}</small>`}</div>`).join('')}</div>`;
+    el.innerHTML = `<div class="in-logo">${V2 ? 'Patrimônio 2.0' : 'Patrimônio'}</div><div class="in-sub">${op ? 'Quem tirar mais nos dados começa!' : 'A partida vai começar!'}</div><div class="in-players">${lobby.map((p, i) => `<div class="in-p" style="--c:${p.color};--i:${i}">${faceHTML(p, 76)}<b>${esc(p.name)}</b>${op ? '<div class="in-dice"></div><em class="in-sum"></em><span class="in-rank"></span>' : `<small>${p.bot ? 'Bot' : 'Jogador'}</small>`}</div>`).join('')}</div>`;
     document.body.append(el); Stage.setSpeed(1); Sound.play('whoosh');
     let skip = false, done; const fast = new Promise(r => (done = r)); el.onclick = () => { skip = true; done(); };
     const pause = ms => Promise.race([wait(ms), fast]);
@@ -171,7 +172,7 @@
       el.classList.toggle('out', p.out);
       el.querySelector('.where').textContent = (p.out ? (p.kicked ? 'Expulso' : 'Falido') : p.jail ? 'Na Delegacia' : SQ[p.pos].name) + (st.sp && st.sp.who === p.i ? ` · patrocínio ${Engine.sponsorTag(st.sp.lv)}` : '');
       el.querySelector('.nprops').textContent = p.out ? (p.kicked ? 'Expulso' : 'Faliu') : nProps(p.i);
-      el.querySelector('.tags').innerHTML = (p.jail ? '<b>preso</b>' : '') + (p.cards.length ? `<b title="Habeas corpus">HC${p.cards.length > 1 ? ' ×' + p.cards.length : ''}</b>` : '') + (Engine.loanOf(st, p.i) ? '<b>fiado</b>' : '') + (passesHeld(p.i) ? `<b title="Passes livres">PL ${passesHeld(p.i)}</b>` : '') + (p.out ? (p.kicked ? '<b>expulso</b>' : '<b>faliu</b>') : '');
+      el.querySelector('.tags').innerHTML = (p.jail ? '<b>preso</b>' : '') + (p.cards.length ? `<b title="Habeas corpus">HC${p.cards.length > 1 ? ' ×' + p.cards.length : ''}</b>` : '') + (Engine.loanOf(st, p.i) ? '<b>fiado</b>' : '') + (passesHeld(p.i) ? `<b title="Passes livres">PL ${passesHeld(p.i)}</b>` : '') + (p.items?.length ? `<b title="Cartas da Lojinha">🎴 ${p.items.length}</b>` : '') + (p.out ? (p.kicked ? '<b>expulso</b>' : '<b>faliu</b>') : '');
       el.querySelectorAll('.strip i').forEach(i => { const pr = st.props[i.dataset.s]; i.className = pr.owner === p.i ? (pr.m ? 'mort' : 'own') : ''; });
     });
   }
@@ -213,7 +214,7 @@
       return `${st && Engine.sponsored(st, s) ? `<div class="sp-tag">Patrocinado: ${Engine.sponsorText(Engine.sponsored(st, s)).toLowerCase()}, até alguém roubar</div>` : ''}<table><tr class="${cur(0) && !mono && !pr.x ? 'cur' : ''}"><td>Terreno</td><td>${brl(q.rent[0])}</td></tr><tr class="${cur(0) && (mono || pr.x) ? 'cur' : ''}"><td>${st?.rules?.pux ? 'Puxadinho ou grupo' : 'Grupo fechado'}</td><td>${brl(q.rent[0] * 2)}</td></tr>${[1, 2, 3, 4].map(n => `<tr class="${cur(n)}"><td>${Engine.LEVELS[n]}</td><td>${brl(q.rent[n])}</td></tr>`).join('')}<tr class="${cur(5)}"><td>Hotel</td><td>${brl(q.rent[5])}</td></tr></table><div class="foot"><span>Cada obra: ${brl(q.house)}</span><span>Hipoteca: ${brl(q.price / 2)}</span></div>`;
     }
     if (q.k === 'rail') return `<table>${[1, 2, 3, 4].map(n => `<tr><td>${n === 1 ? '1 aeroporto' : n + ' aeroportos'}</td><td>${brl(17 * 2 ** (n - 1))}</td></tr>`).join('')}</table><div class="foot"><span>Hipoteca: ${brl(q.price / 2)}</span></div>`;
-    return `<table><tr><td>1 usina</td><td>3 × dados</td></tr><tr><td>2 usinas</td><td>7 × dados</td></tr></table><div class="foot"><span>Hipoteca: ${brl(q.price / 2)}</span></div>`;
+    return `<table><tr><td>1 usina</td><td>3 × dados</td></tr><tr><td>2 usinas</td><td>7 × dados</td></tr>${V2 ? '<tr><td>3 usinas</td><td>10 × dados</td></tr>' : ''}</table><div class="foot"><span>Hipoteca: ${brl(q.price / 2)}</span></div>`;
   }
   // a carta acompanha o ponteiro de leve e o brilho corre por cima: dá volume sem pesar
   function tilt(el) {
@@ -339,6 +340,13 @@
       await Stage.blitzCar(true); await wait(260);
     },
     async blitzOk(e) { banner(`😎 <b>${esc(st.players[e.who].name)}</b> passou na Blitz`, '#2f9e57', 1700); Sound.play('free'); Stage.blitzCar(false); await wait(700); },
+    async teleport(e) {
+      banner(esc(e.msg), '#a667d9', 1600); Sound.play('whoosh');
+      Stage.setActive(-1); await Stage.fly(e.who, e.to, false, 800, 3); Stage.pulseTile(e.to, st.players[e.who].color); Stage.setActive(shownTurn);
+    },
+    async shopLand(e) { banner(`🛍️ ${esc(st.players[e.who].name)} chegou à Lojinha`, '#37ba91', 1600); Sound.play('card'); await wait(700); },
+    async shopSpin(e) { await shopSpin(e); refreshPlates(); },
+    async itemUsed(e) { banner(`🎴 ${esc(e.msg)}`, '#b48be8', 1600); Sound.play('good'); refreshPlates(); await wait(600); },
     async casinoLand(e) {
       const p = st.players[e.who]; Stage.setActive(-1); Sound.play('sponsor'); if (e.can && e.who === ME) { closeLoose(); closeDeed(); }
       banner(e.can ? `🎲 <b>${esc(p.name)}</b> chegou ao Cassino` : `🎲 <b>${esc(p.name)}</b> está sem dinheiro para apostar`, '#1f8a4d', 1500); await wait(700); Stage.setActive(shownTurn);
@@ -349,7 +357,7 @@
     },
     async casinoBet(e) { Stage.focusTable(e.game); Sound.play('chips', Math.min(8, 3 + Math.round((e.bet || 20) / 40))); await wait(420); },
     async casinoResult(e) {
-      const p = st.players[e.who], win = e.won > 0, el = document.createElement('div'), G_ = CAS_GAMES.find(g => g[0] === e.game), pk = { red: 'vermelho', black: 'preto' }[e.pick] ?? e.pick;
+      const p = st.players[e.who], win = e.won > 0, el = document.createElement('div'), G_ = CAS_GAMES.find(g => g[0] === e.game), pk = { red: 'vermelho', black: 'preto', green: 'verde' }[e.pick] ?? e.pick;
       el.className = `cas-res ${win ? 'win' : 'lose'}`;
       el.innerHTML = `<div class="cr-rays"></div><header>${G_[3]}<span>${G_[1]}</span></header>${faceHTML(p, 76)}<b class="cr-who">${esc(p.name)}</b><h2>${win ? 'Ganhou!' : 'Perdeu!'}</h2><div class="cr-amt">${win ? '+' : '−'}${brl(win ? e.won : e.bet)}</div><div class="cr-det">${e.game === 'slot' ? '' : `Apostou em <b>${esc(pk)}</b> · `}Deu <b>${esc(e.shown)}</b>${win ? ` · Aposta de ${brl(e.bet)}` : ''}</div>`;
       $('#stage').append(el); el.animate([{ transform: 'scale(.3) rotate(-10deg)', opacity: 0 }, { transform: 'scale(1.08) rotate(2deg)', opacity: 1, offset: .65 }, { transform: 'none', opacity: 1 }], { duration: 380, easing: 'cubic-bezier(.2,.9,.3,1.2)' });
@@ -359,7 +367,7 @@
     },
     async casinoEnd() { Stage.focusTable(null); },
     async sponsorLand(e) {
-      const p = st.players[e.who]; Sound.play('sponsor'); Stage.sponsorBurst(20); Stage.shake(.12);
+      const p = st.players[e.who]; Sound.play('sponsor'); Stage.sponsorBurst(SQ.length / 2); Stage.shake(.12);
       banner(!e.can ? `⭐ <b>${esc(p.name)}</b> não tem lugar para o patrocínio: leva ${brl(Engine.SPONSOR.cash)}` : e.from !== null ? `⭐ <b>${esc(p.name)}</b> vai roubar o patrocínio de ${esc(st.players[e.from].name)}` : `⭐ <b>${esc(p.name)}</b> ganhou um patrocinador`, '#c9921e', 2000);
       if (e.can) for (const s of Engine.ownedBy(st, e.who)) if (!st.props[s].m) Stage.pulseTile(s, '#ffc94f');
       await wait(900);
@@ -368,7 +376,7 @@
       closeSheet(); const c = document.createElement('div'), what = Engine.sponsorText(e.lv); c.className = 'sp-card'; c.innerHTML = `<small>${e.stolen !== null ? 'Patrocínio roubado' : 'Patrocinado'}</small><b>${esc(SQ[e.sq].name)}</b><em>${what}</em>`; $('#stage').append(c);
       c.animate([{ transform: 'scale(.6) rotate(-4deg)', opacity: 0 }, { transform: 'scale(1.05) rotate(1deg)', opacity: 1, offset: .65 }, { transform: 'none', opacity: 1 }], { duration: 320, easing: 'ease-out' });
       Sound.play('sponsor'); if (e.oldSq !== null) Stage.setSponsor(e.oldSq, 0);
-      await Stage.sponsorFly(e.stolen !== null ? e.oldSq : 20, e.sq, e.lv); Sound.play('sponsorStamp'); refreshPlates(); await wait(520);
+      await Stage.sponsorFly(e.stolen !== null ? e.oldSq : SQ.length / 2, e.sq, e.lv); Sound.play('sponsorStamp'); refreshPlates(); await wait(520);
       await c.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(-14px)' }], { duration: 200, fill: 'forwards' }).finished; c.remove();
     },
     async sponsorEnd(e) { Stage.setSponsor(e.sq, 0); },
@@ -521,6 +529,8 @@
     const bar = $('#bar'), has = t => [...bar.children].some(b => b.textContent.includes(t)), me = st.players[ME];
     if (!has('Patrimônio') && !has('Vender ou')) bar.append(btn('Patrimônio', () => portfolio(ME)));
     if (!has('Negociar')) bar.append(btn('Negociar', () => tradeBox(ME)));
+    if (V2 && !has('Minhas cartas')) bar.append(btn(`Minhas cartas (${me.items.length})`, () => itemsBox(ME)));
+    const ib = [...bar.children].find(b => b.textContent.includes('Minhas cartas')); if (ib) ib.lastChild.textContent = `Minhas cartas (${me.items.length})`;
     if (st.rules?.contracts && me.contracts.length && !has('Contratos')) bar.append(btn('Contratos', () => contractsBox(ME)));
   }
   function drawControls() {
@@ -531,12 +541,12 @@
     removeAuction();
     const who = Engine.actor(st), p = st.players[who], bar = $('#bar');
     // o que está na tela só é refeito se a decisão mudou: uma obra de outro jogador não apaga a aposta que você monta
-    const key = who !== ME ? `w:${who}` : JSON.stringify([st.phase, st.turn, st.buy, st.doubles, st.again, p.cash, p.jail, p.tries, p.cards.length, p.contracts.length, st.debts?.[0], st.credit]);
+    const key = who !== ME ? `w:${who}` : JSON.stringify([st.phase, st.turn, st.buy, st.doubles, st.again, p.cash, p.jail, p.tries, p.cards.length, p.items, p.activeItems, st.pendingRent, p.contracts.length, st.debts?.[0], st.credit]);
     if (key === ctlKey) return;
     closeSheetDecide(); clearBar(); ctlKey = key;
     if (who !== ME) { myPhase = null; if (ME < 0) bar.append(hintEl('Você está assistindo')); return; }
     // chegou a hora de decidir: uma janela que ficou aberta não pode esconder a carta ou o cassino
-    if (st.phase !== myPhase && (st.phase === 'buy' || st.phase === 'casino')) closeLoose();
+    if (st.phase !== myPhase && (st.phase === 'buy' || st.phase === 'casino' || st.phase === 'shop' || st.phase === 'rent')) closeLoose();
     myPhase = st.phase;
     Stage.setSpeed(base);
     if (st.credit) return showCredit();
@@ -557,13 +567,22 @@
       bar.append(btn('Declarar falência', () => confirmBankrupt(who), 'red'));
       return;
     }
+    if (st.phase === 'shop') {
+      bar.append(hintEl('Lojinha: uma rodada por visita. Todas as cartas podem ser guardadas e negociadas.'), btn('Girar por ' + brl(Engine.SHOP_COST), () => act(who, { type: 'shopspin' }), 'pri', true), btn('Ver cartas da roleta', shopCatalog), btn('Passar', () => act(who, { type: 'shopskip' })));
+      bar.querySelector('[data-primary]').disabled = p.cash < Engine.SHOP_COST; return;
+    }
+    if (st.phase === 'rent') {
+      const bill = st.pendingRent; bar.append(hintEl(`Aluguel de ${esc(SQ[bill.sq].name)}: ${brl(bill.amount)}. Escolha uma carta ou pague o valor integral.`));
+      p.items.filter(c => Engine.itemDef(c.id).kind === 'rent').forEach(c => { const def = Engine.itemDef(c.id); bar.append(btn(`${def.name}: pagar ${brl(Engine.discounted(bill.amount, def.factor))}`, () => act(who, { type: 'useitem', uid: c.uid }))); });
+      bar.append(btn('Pagar ' + brl(bill.amount), () => act(who, { type: 'payrent' }), 'pri', true)); return;
+    }
     if (st.phase === 'casino') {
       const top = Engine.maxBet(st, who), T = Engine.CASINO, box = document.createElement('div'); box.className = 'cas';
       const game = 'roleta'; let pick = 'red', amt = Math.min(25, top), go;
       const seg = (cls, items, on) => `<div class="s-seg ${cls}">${items.map(([v, t, off]) => `<button data-v="${v}" class="${on(v) ? 'on' : ''}" ${off ? 'disabled' : ''}>${t}</button>`).join('')}</div>`;
       // o valor muda sem repintar o painel, para o arrasto da barra não se perder
       const paintAmt = (typing) => {
-        const r = box.querySelector('#cas-r'), v = box.querySelector('#cas-v'), m = typeof pick === 'number' ? T.number : Engine.colorPays(st);
+        const r = box.querySelector('#cas-r'), v = box.querySelector('#cas-v'), m = (typeof pick === 'number' ? T.number : pick === 'green' ? T.green : Engine.colorPays(st, pick)) * (p.activeItems?.casino?.factor || 1);
         r.value = amt; r.style.setProperty('--p', `${top > T.min ? (amt - T.min) / (top - T.min) * 100 : 100}%`); if (!typing) v.value = amt;
         box.querySelectorAll('.cas-q button').forEach(b => b.classList.toggle('on', +b.dataset.a === amt));
         box.querySelector('#cas-pay').innerHTML = `<span>Paga ${m}×</span><span>Se ganhar: <b>${brl(amt * m)}</b></span>`;
@@ -571,20 +590,20 @@
       };
       const draw = () => {
         const num = typeof pick === 'number', k = num ? 'num' : pick;
-        box.innerHTML = seg('three', [['red', 'Vermelho'], ['black', 'Preto'], ['num', 'Número']], v => v === k).replace('s-seg', 's-seg p')
+        box.innerHTML = seg('three', [['red', V2 ? `Vermelho · ${Engine.colorPays(st, 'red')}×` : 'Vermelho'], ['black', V2 ? `Preto · ${Engine.colorPays(st, 'black')}×` : 'Preto'], ['num', V2 ? 'Número · 30×' : 'Número'], ...(V2 ? [['green', 'Verde · 40×']] : [])], v => v === k).replace('s-seg', 's-seg p')
           + (num ? `<label class="pickn">Número (0 a 36) <input id="cas-n" type="number" min="0" max="36" value="${pick}"></label>` : '')
-          + `<div class="cas-amt"><label class="cas-val"><span>Aposta</span><i>R$</i><input id="cas-v" type="number" min="${T.min}" max="${top}" step="1" inputmode="numeric" aria-label="Valor da aposta, em mil"><i>mil</i></label><input id="cas-r" type="range" min="${T.min}" max="${top}" step="1" aria-label="Valor da aposta"><div class="cas-q">${[...new Set([5, 10, 25, 50, top])].filter(v => v <= top).sort((a, b) => a - b).map(v => `<button data-a="${v}">${v === top ? 'Máx' : v}</button>`).join('')}</div></div><div class="pay" id="cas-pay"></div>`;
+          + `<div class="cas-amt"><label class="cas-val"><span>Aposta</span><i>R$</i><input id="cas-v" type="number" min="${T.min}" max="${top}" step="${V2 ? .001 : 1}" inputmode="decimal" aria-label="Valor da aposta, em mil"><i>mil</i></label><input id="cas-r" type="range" min="${T.min}" max="${top}" step="${V2 ? .001 : 1}" aria-label="Valor da aposta"><div class="cas-q">${[...new Set([5, 10, 25, 50, top])].filter(v => v <= top).sort((a, b) => a - b).map(v => `<button data-a="${v}">${v === top ? 'Máx' : v}</button>`).join('')}</div></div><div class="pay" id="cas-pay"></div>`;
         box.querySelectorAll('.p button').forEach(b => { b.onclick = () => { pick = b.dataset.v === 'num' ? 17 : b.dataset.v; draw(); }; });
         box.querySelectorAll('.cas-q button').forEach(b => { b.onclick = () => { amt = +b.dataset.a; Sound.play('click'); paintAmt(); }; });
         box.querySelector('#cas-r').oninput = ev => { amt = +ev.target.value; paintAmt(); };
-        const val = box.querySelector('#cas-v'), clamp = x => Math.max(T.min, Math.min(top, Math.floor(+x) || T.min));
+        const val = box.querySelector('#cas-v'), clamp = x => Math.max(T.min, Math.min(top, (V2 ? Engine.discounted(+x) : Math.floor(+x)) || T.min));
         val.oninput = () => { amt = clamp(val.value); paintAmt(true); }; val.onchange = () => { amt = clamp(val.value); paintAmt(); };
         const n = box.querySelector('#cas-n'); if (n) n.onchange = () => { pick = Math.max(0, Math.min(36, Math.round(+n.value) || 0)); draw(); };
         paintAmt();
       };
       go = btn('Apostar', () => act(who, { type: 'bet', game, pick, amount: amt }), 'pri', true); draw();
       const pop = document.createElement('div'), foot = document.createElement('div'); pop.id = 'casino'; foot.className = 'cas-go';
-      pop.innerHTML = `<header><small>Cassino</small><h2>Roleta: faça sua aposta</h2><em>Até ${brl(top)}, se quiser</em></header>`; foot.append(go, btn('Passar', () => act(who, { type: 'nobet' }))); pop.append(eyeBtn(), box, foot); $('#hud').append(pop); paintAmt();
+      pop.innerHTML = `<header><small>Cassino</small><h2>Roleta: faça sua aposta</h2><em>${V2 ? 'Sem teto: até todo o seu saldo de ' : 'Até '}${brl(top)}${p.activeItems?.casino ? ' · carta Cassino 3× ativada' : ''}</em></header>`; foot.append(go, btn('Passar', () => act(who, { type: 'nobet' }))); pop.append(eyeBtn(), box, foot); $('#hud').append(pop); paintAmt();
       return;
     }
     if (st.phase === 'sponsor') {
@@ -714,13 +733,31 @@
     }
     acts.append(btn('Fechar', closeDeed, 'ghost'));
   }
+  const itemHTML = c => `<article class="shop-item"><span aria-hidden="true">🎴</span><h3>${esc(c.name)}</h3><p>${esc(c.text)}</p></article>`;
+  function shopCatalog() {
+    sheet(`<button class="close" data-x>✕</button><h2>Roleta da Lojinha</h2><p class="sub">Uma rodada por visita custa ${brl(Engine.SHOP_COST)}. As ${Engine.ITEMS.length} cartas têm a mesma chance. Cada carta vale uma utilização. Você pode acumular e negociar quantas quiser.</p><div class="shop-grid">${Engine.ITEMS.map(itemHTML).join('')}</div>`).firstElementChild.classList.add('wide');
+  }
+  function itemsBox(i) {
+    const p = st.players[i], active = Object.values(p.activeItems || {});
+    sheet(`<button class="close" data-x>✕</button><h2>Minhas cartas</h2>${whoCard(p, `${p.items.length} cartas da Lojinha`)}<p class="sub">Use na sua vez ou escolha as cartas na tela Negociar. Descontos ativados ficam guardados até serem usados; um de cada tipo por vez. Viagens substituem o lançamento e não pagam salário, exceto a carta Marco Zero.</p>${active.length ? `<div class="items-active"><b>Cartas ativadas</b>${active.map(c => `<span>${esc(c.name)}</span>`).join('')}</div>` : ''}<div class="shop-grid">${p.items.map(c => { const def = Engine.itemDef(c.id), err = tryAct(i, { type: 'useitem', uid: c.uid }); return `<div>${itemHTML(def)}<button class="btn ${err ? '' : 'pri'}" data-use-item="${c.uid}" ${err ? `disabled title="${esc(err)}"` : ''}>Usar carta</button>${err ? `<small class="item-why">${esc(err)}</small>` : ''}</div>`; }).join('') || '<p class="empty">Caia na Lojinha ou negocie com outro jogador para conseguir cartas.</p>'}</div>`, box => box.querySelectorAll('[data-use-item]').forEach(b => { b.onclick = () => { if (act(i, { type: 'useitem', uid: +b.dataset.useItem })) closeSheet(); }; })).firstElementChild.classList.add('wide');
+  }
+  async function shopSpin(e) {
+    closeLoose(); const card = Engine.itemDef(e.item.id), index = Engine.ITEMS.findIndex(c => c.id === card.id), n = Engine.ITEMS.length;
+    const el = document.createElement('div'); el.className = 'shop-spin';
+    const colors = ['#9257bd', '#278f79', '#c47c23', '#366cba'];
+    el.innerHTML = `<h2>Roleta da Lojinha</h2><p>${esc(st.players[e.who].name)}</p><div class="shop-wheel-wrap"><i class="shop-pointer"></i><div class="shop-wheel" style="background:conic-gradient(${Engine.ITEMS.map((c, k) => `${colors[k % colors.length]} ${k / n * 360}deg ${(k + 1) / n * 360}deg`).join(',')})">${Engine.ITEMS.map((c, k) => `<span style="--angle:${(k + .5) / n * 360}deg">${k + 1}</span>`).join('')}</div></div><div class="shop-prize" hidden>${itemHTML(card)}<small>Carta guardada no inventário · pode ser negociada</small></div>`;
+    $('#stage').append(el); Sound.play('roulette');
+    await el.querySelector('.shop-wheel').animate([{ transform: 'rotate(0deg)' }, { transform: `rotate(${1440 - (index + .5) / n * 360}deg)` }], { duration: 2000 / base, easing: 'cubic-bezier(.12,.65,.12,1)', fill: 'forwards' }).finished;
+    el.querySelector('.shop-prize').hidden = false; Sound.play('good');
+    await new Promise(resolve => { const timer = setTimeout(resolve, 2200 / base); el.onclick = () => { clearTimeout(timer); resolve(); }; }); el.remove();
+  }
   function tradeBox(me) {
     const others = st.players.filter(p => !p.out && p.i !== me); let to = others[0].i;
     const give = new Set(), want = new Set();
     const canPick = s => Engine.groupClear(st, s) && !st.props[s].lien;
     const column = (p, side, set, title) => { const list = Engine.ownedBy(st, p.i), k = side === 'g' ? 'g' : 'w', max = Math.max(0, p.cash); return `<div class="tc ${k}" style="--c:${p.color}">${whoCard(p, `${brl(p.cash)} · ${nProps(p.i)}`)}<h3>${title}</h3><div class="pc-grid small">${list.map(s => pcard(s, { sel: set.has(s), attrs: `data-side="${side}"`, off: !canPick(s), price: true })).join('') || '<p class="empty">Nenhuma propriedade</p>'}</div>
       <div class="tc-more"><div class="t-cash"><label class="money-in"><span>R$</span><input id="${k}cash" type="number" min="0" max="${max}" placeholder="0" inputmode="numeric"><span>mil</span></label><div class="t-chips">${[10, 50, 100].map(v => `<button type="button" data-add="${v}" data-k="${k}">+${v}</button>`).join('')}<button type="button" data-add="all" data-k="${k}" title="Todo o dinheiro de ${esc(p.name)}">Tudo</button><button type="button" data-add="0" data-k="${k}" title="Zerar" aria-label="Zerar">✕</button></div></div>
-      <div class="t-extras">${st.rules?.passes ? `<label class="t-pill" title="Aluguéis grátis nas propriedades de quem dá"><span>🎟️ Passes livres</span><input id="${k}pass" type="number" min="0" max="${Engine.PASS_MAX}" placeholder="0" inputmode="numeric"></label>` : ''}${p.cards.length ? `<label class="t-pill"><input id="${k}card" type="checkbox"><span>⚖️ Habeas corpus</span></label>` : ''}</div></div></div>`; };
+      <div class="t-extras">${st.rules?.passes ? `<label class="t-pill" title="Aluguéis grátis nas propriedades de quem dá"><span>🎟️ Passes livres</span><input id="${k}pass" type="number" min="0" max="${Engine.PASS_MAX}" placeholder="0" inputmode="numeric"></label>` : ''}${p.cards.length ? `<label class="t-pill"><input id="${k}card" type="checkbox"><span>⚖️ Habeas corpus</span></label>` : ''}</div>${p.items?.length ? `<div class="trade-items"><h3>Cartas da Lojinha</h3>${p.items.map(c => `<label title="${esc(Engine.itemDef(c.id).text)}"><input type="checkbox" data-item-side="${k}" value="${c.uid}"><span>${esc(itemName(c))}<small>${esc(Engine.itemDef(c.id).text)}</small></span></label>`).join('')}</div>` : ''}</div></div>`; };
     const draw = () => {
       const A = st.players[me], B = st.players[to];
       sheet(`<button class="close" data-x>✕</button><h2>Negociar</h2><p class="sub">Com quem você quer negociar? Toque nas cartas e diga quanto entra de dinheiro.</p>
@@ -728,19 +765,19 @@
         <div class="t-grid">${column(A, 'g', give, 'Você dá')}<div class="t-sw" aria-hidden="true">⇄</div>${column(B, 'w', want, 'Você recebe')}</div>
         <div class="t-bal" id="tbal"></div><p class="err" id="terr"></p><div class="row-end"><button class="btn" data-x>Cancelar</button><button class="btn pri" id="send">Fazer proposta</button></div>`, box => {
         // soma o preço de tabela de cada lugar com o dinheiro; passes e Habeas corpus não têm preço
-        const side = (k, set) => { const cash = +box.querySelector(`#${k}cash`).value || 0, parts = [...[...set].map(s => `${esc(SQ[s].name)} ${brl(SQ[s].price)}`), ...(cash ? [`dinheiro ${brl(cash)}`] : [])]; return { total: [...set].reduce((t, s) => t + SQ[s].price, 0) + cash, txt: parts.join(' + ') || 'nada' }; };
+        const side = (k, set) => { const cash = +box.querySelector(`#${k}cash`).value || 0, parts = [...[...set].map(s => `${esc(SQ[s].name)} ${brl(SQ[s].price)}`), ...(cash ? [`dinheiro ${brl(cash)}`] : [])]; return { total: [...set].reduce((t, s) => t + SQ[s].price, 0) + cash, txt: [...parts, ...[...box.querySelectorAll(`[data-item-side="${k}"]:checked`)].map(n => esc(itemName(st.players[k === 'g' ? me : to].items.find(c => c.uid === +n.value))))].join(' + ') || 'nada' }; };
         const bal = () => {
           const g = side('g', give), w = side('w', want), d = w.total - g.total, tot = g.total + w.total; box.querySelector('#terr').textContent = '';
           const verdict = !tot ? 'Escolha o que entra na troca' : Math.abs(d) <= tot * .05 ? 'Troca equilibrada' : d > 0 ? `Você leva ${brl(d)} a mais` : `Você entrega ${brl(-d)} a mais`;
           box.querySelector('#tbal').innerHTML = `<div class="tb-side g"><small>Você dá</small><b>${brl(g.total)}</b><span>${g.txt}</span></div><div class="tb-mid"><div class="tb-bar${tot ? '' : ' empty'}"><i class="g" style="flex:${g.total || (tot ? 0 : 1)}"></i><i class="w" style="flex:${w.total || (tot ? 0 : 1)}"></i></div><strong class="${!tot || Math.abs(d) <= tot * .05 ? '' : d > 0 ? 'up' : 'down'}">${verdict}</strong></div><div class="tb-side w"><small>Você recebe</small><b>${brl(w.total)}</b><span>${w.txt}</span></div>
-            <small class="tb-note" title="Cada passe sai por no mínimo ${brl(Engine.PASS_MIN)} ou uma propriedade, e não pode ser trocado por outro passe.">Pelo preço de tabela e o dinheiro, só para comparar. Passes livres e Habeas corpus não entram na conta.</small>`;
+            <small class="tb-note" title="Cada passe sai por no mínimo ${brl(Engine.PASS_MIN)} ou uma propriedade, e não pode ser trocado por outro passe.">Pelo preço de tabela e o dinheiro, só para comparar. Passes livres e cartas não entram na conta.</small>`;
         };
         box.querySelectorAll('[data-add]').forEach(b => { b.onclick = () => { const n = box.querySelector(`#${b.dataset.k}cash`), max = +n.max, v = b.dataset.add; n.value = v === 'all' ? max || '' : v === '0' ? '' : Math.min(max, (+n.value || 0) + +v) || ''; Sound.play(v === '0' ? 'click' : 'coin'); bal(); }; });
         box.querySelectorAll('[data-to]').forEach(b => { b.onclick = () => { to = +b.dataset.to; want.clear(); Sound.play('click'); draw(); }; });
         box.querySelectorAll('[data-side]').forEach(b => { b.onclick = () => { const set = b.dataset.side === 'g' ? give : want, s = +b.dataset.s; set.has(s) ? set.delete(s) : set.add(s); b.classList.toggle('sel'); bal(); Sound.play('click'); }; });
-        box.querySelectorAll('input[type=number]').forEach(n => { n.oninput = bal; }); bal();
+        box.querySelectorAll('input[type=number], [data-item-side]').forEach(n => { n.oninput = bal; }); bal();
         box.querySelector('#send').onclick = () => {
-          const a = { type: 'offer', to, give: { cash: +box.querySelector('#gcash').value || 0, props: [...give], cards: box.querySelector('#gcard')?.checked ? 1 : 0, passes: +box.querySelector('#gpass')?.value || 0 }, want: { cash: +box.querySelector('#wcash').value || 0, props: [...want], cards: box.querySelector('#wcard')?.checked ? 1 : 0, passes: +box.querySelector('#wpass')?.value || 0 } };
+          const a = { type: 'offer', to, give: { cash: +box.querySelector('#gcash').value || 0, props: [...give], cards: box.querySelector('#gcard')?.checked ? 1 : 0, items: [...box.querySelectorAll('[data-item-side="g"]:checked')].map(n => +n.value), passes: +box.querySelector('#gpass')?.value || 0 }, want: { cash: +box.querySelector('#wcash').value || 0, props: [...want], cards: box.querySelector('#wcard')?.checked ? 1 : 0, items: [...box.querySelectorAll('[data-item-side="w"]:checked')].map(n => +n.value), passes: +box.querySelector('#wpass')?.value || 0 } };
           const err = tryAct(me, a); if (err) { box.querySelector('#terr').textContent = err; Sound.play('deny'); return; }
           send({ t: 'act', a }); closeSheet(); clearBar();
         };
@@ -750,8 +787,8 @@
   }
   function showOffer() {
     const o = st.offer, A = st.players[o.from], B = st.players[o.to];
-    const list = side => { const extra = [side.cash ? brl(side.cash) : '', side.cards ? 'Habeas corpus' : '', side.passes ? `${side.passes} ${side.passes === 1 ? 'passe livre' : 'passes livres'}` : ''].filter(Boolean).map(t => `<div class="offerline">${t}</div>`).join(''), props = side.props.map(s => pcard(s, { tag: 'div', price: true })).join(''); return `${props ? `<div class="pc-grid small">${props}</div>` : ''}${extra}` || '<p class="empty">Nada</p>'; };
-    sheet(`<h2>Proposta</h2><p class="sub">${esc(A.name)} quer negociar. ${esc(B.name)} decide.${o.give.props.some(s => st.props[s].m) ? ' Lugar hipotecado paga 10% de juros ao mudar de dono.' : ''}</p><div class="t-grid"><div class="tc g" style="--c:${A.color}">${whoCard(A, 'Faz a proposta')}<h3>${esc(B.name)} recebe</h3>${list(o.give)}</div><div class="t-sw" aria-hidden="true">⇄</div><div class="tc w" style="--c:${B.color}">${whoCard(B, 'Decide')}<h3>${esc(B.name)} dá</h3>${list(o.want)}</div></div><div class="row-end"><button class="btn" id="no">Recusar</button><button class="btn pri" id="yes" data-primary>Aceitar</button></div>`, box => {
+    const list = (side, owner) => { const extra = [...(side.items || []).map(uid => { const c = owner.items?.find(c => c.uid === uid); return c ? `🎴 ${esc(itemName(c))}` : 'Carta já usada'; }), side.cash ? brl(side.cash) : '', side.cards ? 'Habeas corpus' : '', side.passes ? `${side.passes} ${side.passes === 1 ? 'passe livre' : 'passes livres'}` : ''].filter(Boolean).map(t => `<div class="offerline">${t}</div>`).join(''), props = side.props.map(s => pcard(s, { tag: 'div', price: true })).join(''); return `${props ? `<div class="pc-grid small">${props}</div>` : ''}${extra}` || '<p class="empty">Nada</p>'; };
+    sheet(`<h2>Proposta</h2><p class="sub">${esc(A.name)} quer negociar. ${esc(B.name)} decide.${o.give.props.some(s => st.props[s].m) ? ' Lugar hipotecado paga 10% de juros ao mudar de dono.' : ''}</p><div class="t-grid"><div class="tc g" style="--c:${A.color}">${whoCard(A, 'Faz a proposta')}<h3>${esc(B.name)} recebe</h3>${list(o.give, A)}</div><div class="t-sw" aria-hidden="true">⇄</div><div class="tc w" style="--c:${B.color}">${whoCard(B, 'Decide')}<h3>${esc(B.name)} dá</h3>${list(o.want, B)}</div></div><div class="row-end"><button class="btn" id="no">Recusar</button><button class="btn pri" id="yes" data-primary>Aceitar</button></div>`, box => {
       box.querySelector('#yes').onclick = () => { closeSheet(); act(o.to, { type: 'accept' }); };
       box.querySelector('#no').onclick = () => { closeSheet(); act(o.to, { type: 'reject' }); };
     }).firstElementChild.classList.add('wide');

@@ -903,3 +903,32 @@ button.pc:hover:not(:disabled) { transform: translateY(-2px); }
   .p-story .pic { width: 96px; height: 66px; }
   .n-big.xl { font-size: 2.3rem; min-width: 96px; }
 }
+/* Patrimônio 2.0: cartas da Lojinha, roleta e negociação de itens. */
+.shop-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:16px; margin:20px 0; }
+.shop-item { background:linear-gradient(145deg,#fff9e8,#eadcf7); border:2px solid #9163b4; border-radius:16px; padding:18px; color:#30203f; min-height:175px; box-shadow:0 4px 0 #55347233; }
+.shop-item>span { font-size:28px; }
+.shop-item h3 { margin:8px 0; font-size:18px; }
+.shop-item p { margin:0; font-size:16px; line-height:1.45; }
+.shop-grid>.shop-item,.shop-grid>div { min-width:0; }
+.shop-grid>div>.btn { width:100%; margin-top:8px; }
+.item-why { display:block; margin-top:6px; font-size:14px; }
+.items-active { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:16px 0; }
+.items-active span { padding:6px 10px; background:#d8ecdd; color:#24492f; border-radius:20px; font-size:14px; }
+.trade-items { margin-top:16px; display:grid; gap:8px; }
+.trade-items h3 { margin-bottom:0; }
+.trade-items label { display:flex; align-items:flex-start; gap:10px; text-align:left; background:#eee4f8; border:1px solid #b99bce; border-radius:10px; padding:10px; cursor:pointer; font-size:16px; }
+.trade-items input { width:20px; height:20px; flex-shrink:0; accent-color:#7b45a1; }
+.trade-items small { display:block; font-size:14px; margin-top:4px; line-height:1.4; }
+.shop-spin { position:absolute; pointer-events:auto; left:50%; top:50%; translate:-50% -50%; width:min(440px,94vw); max-height:95dvh; overflow:auto; text-align:center; background:#fbf3df; border:4px solid #c99735; border-radius:24px; padding:20px; color:#30203f; box-shadow:0 20px 80px #0009; }
+.shop-spin h2 { margin:0; font-family:'Lilita One',sans-serif; font-size:32px; }
+.shop-spin p { margin:8px 0; font-size:16px; }
+.shop-wheel-wrap { position:relative; width:min(260px,65vw); aspect-ratio:1; margin:18px auto; }
+.shop-wheel { position:absolute; inset:0; border:8px solid #c99735; border-radius:50%; box-shadow:inset 0 0 0 2px #fff8; }
+.shop-wheel span { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(var(--angle)) translateY(-94px); color:#fff; font-weight:900; font-size:16px; }
+.shop-pointer { position:absolute; left:50%; top:-8px; translate:-50% 0; width:0; height:0; border-left:12px solid transparent; border-right:12px solid transparent; border-top:25px solid #402346; z-index:1; }
+.shop-prize small { display:block; margin-top:12px; font-size:14px; }
+.shop-prize .shop-item { min-height:0; }
+.cas .p:has([data-v="green"]) { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.cas .p [data-v="green"] { color:#16613d; }
+.cas .p [data-v="green"].on { background:#24814e; color:#fff; }
+@media(max-width:520px) { .shop-grid { grid-template-columns:1fr; } .shop-spin { padding:16px; } }

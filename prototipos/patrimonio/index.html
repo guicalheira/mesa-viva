@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-edition="1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Patrimônio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
-<script>const V = new URLSearchParams(location.search).get('v') || ''; document.write(`<link rel="stylesheet" href="style.css?v=${V}">`);</script>
+<script>const V = new URLSearchParams(location.search).get('v') || ''; const ED2 = document.documentElement.dataset.edition === '2' || new URLSearchParams(location.search).get('edition') === '2'; if (ED2) { document.title = 'Patrimônio 2.0'; addEventListener('DOMContentLoaded', () => document.querySelector('.wordmark').textContent = 'Patrimônio 2.0'); } document.write(`<link rel="stylesheet" href="style.css?v=${V}">`);</script>
 </head>
 <body>
 <canvas id="gl"></canvas>
@@ -57,6 +57,6 @@
 <div id="stage"><div id="sum"></div></div>
 <div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>for (const f of ['../../js/pat-data.js', '../../js/pat-engine.js', 'art.js', 'audio.js', 'scene.js', 'ui.js']) document.write(`<script src="${f}?v=${V}"><\/script>`);</script>
+<script>for (const f of ['../../js/pat-data.js', '../../js/pat2-data.js', '../../js/pat-engine.js', 'art.js', 'audio.js', 'scene.js', 'ui.js']) { document.write(`<script src="${f}?v=${V}"><\/script>`); if (f.endsWith('pat2-data.js')) document.write('<script>if (ED2) window.PD = window.PD2;<\/script>'); }</script>
 </body>
 </html>
