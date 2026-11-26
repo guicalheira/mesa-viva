@@ -209,7 +209,7 @@ const Art = (() => {
 
   const STATES = { PA: 'PARÁ', PE: 'PERNAMBUCO', MA: 'MARANHÃO', CE: 'CEARÁ', RJ: 'RIO DE JANEIRO', BA: 'BAHIA', MG: 'MINAS GERAIS', RS: 'RIO GRANDE DO SUL', PR: 'PARANÁ', AM: 'AMAZONAS', SP: 'SÃO PAULO', DF: 'DISTRITO FEDERAL', MS: 'MATO GROSSO DO SUL', ES: 'ESPÍRITO SANTO' };
   function tile(i, upright = false) {
-    const q = PD.SQ[i], W = 512, H = 870, c = mk(W, H), x = c.getContext('2d'), p = PD.GROUPS[q.g];
+    const q = PD.SQ[i], W = 512, H = 870, c = mk(W, H), x = c.getContext('2d'), p = q.streetColor ? { ...PD.GROUPS[q.g], c:q.streetColor, d:q.streetColor } : PD.GROUPS[q.g];
     seed = 4242 + i * 97;
     ceramic(x, W, H);
     // só os grupos têm cor; as outras casas ficam limpas
@@ -457,7 +457,7 @@ const Art = (() => {
   }
   // miniatura da cena para as cartas da tela
   function sceneCanvas(q, W = 480) {
-    const H = Math.round(W * .62), c = mk(W, H), x = c.getContext('2d'), p = PD.GROUPS[q.g];
+    const H = Math.round(W * .62), c = mk(W, H), x = c.getContext('2d'), p = q.streetColor ? { ...PD.GROUPS[q.g], c:q.streetColor, d:q.streetColor } : PD.GROUPS[q.g];
     const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, p.l); g.addColorStop(1, CREAM); x.fillStyle = g; x.fillRect(0, 0, W, H);
     if (ICONS.has(q.art) && photos[q.art]) { icon(x, q.art, 0, H * .08, W, H * .84); return c; }
     if (photos[q.art]) { coverPhoto(x, q.art, 0, 0, W, H); return c; }

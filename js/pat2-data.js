@@ -4,9 +4,9 @@
   const copy = x => JSON.parse(JSON.stringify(x));
   const GROUPS = { ...copy(base.GROUPS),
     sul: { name: 'Rio Grande do Sul', c: '#43805a', l: '#d9efdf', d: '#235038' },
-    portugal: { name: 'Portugal', c: '#b7477d', l: '#f6dce9', d: '#74254c' },
+    portugal: { name: 'Santa Catarina', c: '#b7477d', l: '#f6dce9', d: '#74254c' },
     unico: { name: 'Balneário Camboriú · construção livre', c: '#24a99c', l: '#d4f4ef', d: '#10665e' },
-    mundo: { name: 'Destinos internacionais', c: '#7250c4', l: '#e8defb', d: '#40267f' },
+    mundo: { name: 'Destinos de luxo do Brasil', c: '#7250c4', l: '#e8defb', d: '#40267f' },
   };
   const prop = (g, name, place, art, price, rent, house) => ({ k: 'prop', g, name, place, art, price, rent, house });
   const SQ = [];
@@ -21,19 +21,20 @@
       prop('sul', 'Gramado', 'Serra Gaúcha, RS', 'felicio', 55, [4, 21, 55, 125, 180, 210], 30),
       prop('sul', 'Canela', 'Catedral de Pedra, RS', 'campinas', 60, [5, 23, 60, 140, 185, 220], 35));
     if (legacyIndex === 15) SQ.push(
-      prop('portugal', 'Lisboa', 'Belém e o Tejo, Portugal', 'paraty', 115, [11, 54, 138, 300, 350, 405], 70),
+      prop('portugal', 'Florianópolis', 'Beira-Mar Norte, SC', 'paraty', 115, [11, 54, 138, 300, 350, 405], 70),
       { k: 'util', g: 'util', name: 'Usina Hidrelétrica', place: 'Belo Monte, PA', art: 'energia', price: 100 },
-      prop('portugal', 'Porto', 'Ribeira do Douro, Portugal', 'recife', 125, [13, 62, 152, 325, 380, 440], 90));
+      prop('portugal', 'Jurerê Internacional', 'Florianópolis, SC', 'recife', 125, [13, 62, 152, 325, 380, 440], 90));
     if (legacyIndex === 29) SQ.push(
       prop('unico', 'Balneário Camboriú', 'Barra Sul, SC', 'paulista', 220, [26, 130, 340, 590, 700, 820], 190),
       { k: 'casino', g: 'neutro', name: 'Cassino Royale', place: 'Sem teto de aposta', art: 'cassino' },
       { k: 'mutirao', g: 'neutro', name: 'Imprevisto', art: 'imprevisto' });
     if (legacyIndex === 39) SQ.push(
-      prop('mundo', 'Miami', 'Ocean Drive, EUA', 'santos', 320, [50, 190, 490, 860, 1000, 1150], 270),
+      prop('mundo', 'Búzios', 'Armação dos Búzios, RJ', 'santos', 320, [50, 190, 490, 860, 1000, 1150], 270),
       { ...copy(base.SQ[36]), legacyIndex: 36 },
-      prop('mundo', 'Nova York', 'Manhattan, EUA', 'paulista', 380, [60, 225, 560, 950, 1120, 1280], 300),
-      prop('mundo', 'Dubai', 'Downtown Dubai, Emirados Árabes', 'esplanada', 450, [75, 270, 650, 1080, 1270, 1450], 340));
+      prop('mundo', 'Leblon', 'Rio de Janeiro, RJ', 'paulista', 380, [60, 225, 560, 950, 1120, 1280], 300),
+      prop('mundo', 'Itaim Bibi', 'São Paulo, SP', 'esplanada', 450, [75, 270, 650, 1080, 1270, 1450], 340));
   });
+  SQ.filter(q => q.k === 'prop').forEach((q, i) => { q.streetColor = `hsl(${(i * 137.508) % 360} 68% 46%)`; });
   const oldToNew = i => SQ.findIndex(q => q.legacyIndex === i);
   const CARDS = copy(base.CARDS);
   for (const deck of Object.values(CARDS)) {
@@ -53,10 +54,20 @@
     { id: 'shop', name: 'Cliente VIP', text: 'Vá direto à Lojinha e tenha uma nova oportunidade de girar por R$ 25.000. Sem salário.', kind: 'move', target: SQ.findIndex(q => q.k === 'shop') },
     { id: 'rio', name: 'Partiu Copacabana', text: 'Vá direto ao Rio de Janeiro. Compra e aluguel valem normalmente. Sem salário.', kind: 'move', target: oldToNew(39) },
     { id: 'sp', name: 'Conexão Paulista', text: 'Vá direto a São Paulo. Compra e aluguel valem normalmente. Sem salário.', kind: 'move', target: oldToNew(29) },
-    { id: 'miami', name: 'Passaporte para Miami', text: 'Vá direto a Miami. Compra e aluguel valem normalmente. Sem salário.', kind: 'move', target: SQ.findIndex(q => q.name === 'Miami') },
+    { id: 'miami', name: 'Viagem para Búzios', text: 'Vá direto a Búzios. Compra e aluguel valem normalmente. Sem salário.', kind: 'move', target: SQ.findIndex(q => q.name === 'Búzios') },
     { id: 'jailfree', name: 'Alvará de soltura', text: 'Saia da Delegacia de graça antes de lançar os dados.', kind: 'jail' },
     { id: 'cash50', name: 'Fundo de reserva', text: 'Receba R$ 50.000 do banco.', kind: 'cash', amount: 50 },
+    { id: 'cash10', name: 'Troco de bolso', text: 'Receba R$ 10.000 do banco.', kind: 'cash', amount: 10 },
+    { id: 'cash150', name: 'Bônus de investimento', text: 'Receba R$ 150.000 do banco.', kind: 'cash', amount: 150 },
+    { id: 'cash200', name: 'Grande prêmio', text: 'Receba R$ 200.000 do banco.', kind: 'cash', amount: 200 },
+    { id: 'freeplot', name: 'Terreno de presente', text: 'Ganhe o terreno sem dono mais barato do tabuleiro. Se não houver, receba R$ 50.000.', kind: 'freeplot' },
+    { id: 'bcpermit', name: 'Alvará de Balneário', text: 'Permite uma construção em Balneário Camboriú. É consumido na obra.', kind: 'permit' },
+    { id: 'cash5', name: 'Prêmio de consolação', text: 'Receba R$ 5.000 do banco.', kind: 'cash', amount: 5 },
+    { id: 'fine50', name: 'Reparo inesperado', text: 'Pague R$ 50.000 ao banco.', kind: 'fine', amount: 50 },
   ];
-  const data = { ...base, GROUPS, SQ, CARDS, ITEMS, edition: 2, title: 'Patrimônio 2.0', side: 13 };
+  const RARITIES = { comum: { name: 'Comum', color: '#6384a0', chance: 55 }, raro: { name: 'Rara', color: '#3b7ee8', chance: 28 }, epico: { name: 'Épica', color: '#a458d6', chance: 13 }, lendario: { name: 'Lendária', color: '#e6a833', chance: 4 } };
+  const rarity = { rent50:'raro', rentfree:'epico', buy50:'raro', build50:'raro', casino3:'epico', zero:'epico', rio:'raro', sp:'raro', miami:'raro', cash150:'epico', cash200:'lendario', freeplot:'lendario', bcpermit:'lendario', fine50:'comum' };
+  ITEMS.forEach(c => { c.rarity = rarity[c.id] || 'comum'; c.art = `img/cards/${c.id}.svg`; });
+  const data = { ...base, GROUPS, SQ, CARDS, ITEMS, RARITIES, edition: 2, title: 'Patrimônio 2.0', side: 13 };
   if (typeof module !== 'undefined') module.exports = data; else root.PD2 = data;
 })(typeof window !== 'undefined' ? window : globalThis);

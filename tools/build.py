@@ -1,5 +1,7 @@
 """Gera dist/mesa-viva.html: um único arquivo com CSS, JS e artes embutidas (fácil de mandar para os amigos ou hospedar)."""
 import base64, json, os, re
+from pathlib import Path
+from functools import lru_cache
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 p = lambda *a: os.path.join(ROOT, *a)
@@ -41,6 +43,8 @@ for f in [*[p("js", name + ".js") for name in ["pat-data", "pat2-data", "pat-eng
             photos[name] = 'data:image/' + ('jpeg' if ext == 'jpg' else 'png') + ';base64,' + base64.b64encode(data).decode()
         code = code.replace('const EMBEDDED_PHOTOS = null;', 'const EMBEDDED_PHOTOS = ' + json.dumps(photos) + ';', 1)
     code = code.replace('</script', '<\\/script')
+    if f.endswith('pat2-data.js'):
+        code = code.replace('`img/cards/${c.id}.svg`', "'data:image/svg+xml;base64,' + ({" + ','.join(json.dumps(f.stem) + ':' + json.dumps(base64.b64encode(f.read_bytes()).decode()) for f in sorted(Path(p('prototipos', 'patrimonio', 'img', 'cards')).glob('*.svg'))) + "})[c.id]")
     pat_scripts.append('<script>\n' + code + '\n</script>')
     if f.endswith('pat2-data.js'):
         pat_scripts.append('<script>if (ED2) window.PD = window.PD2;</script>')
@@ -48,12 +52,19 @@ pat = re.sub(r'<script>for \(const f of .*?</script>', lambda m: '\n'.join(pat_s
 pat_embedded = json.dumps(pat, ensure_ascii=True).replace('</', '<\\/')
 html = html.replace('const PAT_EMBEDDED = null;', 'const PAT_EMBEDDED = ' + pat_embedded + ';', 1)
 
-def inline(m):
-    data = base64.b64encode(open(p("assets", m.group(1) + ".webp"), "rb").read()).decode()
+@lru_cache(maxsize=None)
+def inline_asset(name):
+    data = base64.b64encode(open(p("assets", name + ".webp"), "rb").read()).decode()
     return "data:image/webp;base64," + data
+
+def inline(m):
+    return inline_asset(m.group(1))
 html = re.sub(r"assets/([\w/]+)\.webp(?:\?v=[\w.-]+)?", inline, html)  # "?v=" nas imagens só serve para o cache
 # sons (.ogg) também vão embutidos
-html = re.sub(r"assets/(\w+)\.ogg", lambda m: "data:audio/ogg;base64," + base64.b64encode(open(p("assets", m.group(1) + ".ogg"), "rb").read()).decode(), html)
+@lru_cache(maxsize=None)
+def inline_audio(name):
+    return "data:audio/ogg;base64," + base64.b64encode(open(p("assets", name + ".ogg"), "rb").read()).decode()
+html = re.sub(r"assets/(\w+)\.ogg", lambda m: inline_audio(m.group(1)), html)
 
 os.makedirs(p("dist"), exist_ok=True)
 open(p("dist", "mesa-viva.html"), "w", encoding="utf-8").write(html)

@@ -90,7 +90,7 @@
   const fee = s => Math.ceil(mortgageValue(s) / 10);
   // patrocínio: um só na mesa. Vale até outra pessoa cair na casa e roubá-lo; quem cai de novo sobe de +50% para o dobro
   // A edição original mantém o teto; no 2.0 o limite é o saldo disponível.
-  const CASINO = { min: 5, cap: V2 ? null : 50, color: 2, black: V2 ? 3 : 2, number: 30, ...(V2 ? { green: 40 } : {}), red: D.ROULETTE_RED };
+  const CASINO = { min: 5, cap: V2 ? null : 50, color: 2, black: 2, number: 30, ...(V2 ? { green: 40 } : {}), red: D.ROULETTE_RED };
   const maxBet = (st, i) => V2 ? discounted(st.players[i].cash) : Math.min(CASINO.cap, st.players[i].cash);
   const AUCTION_MS = 20000, AUCTION_BUMP_MS = 10000;
   const LEVELS = ['Terreno', 'Casa', 'Sobrado', 'Mansão', 'Prédio', 'Hotel'], LEVEL_ART = ['', 'uma casa', 'um sobrado', 'uma mansão', 'um prédio', 'um hotel'];
@@ -120,6 +120,7 @@
     if (newsNow(st).noBuild) return 'Enchente: ninguém constrói nesta volta';
     if (pr.owner !== i) return 'Esse lugar não é seu';
     if (!hasMonopoly(st, s)) return 'Precisa ter o grupo inteiro';
+    if (V2 && q.name === 'Balneário Camboriú' && !st.players[i].items.some(c => c.id === 'bcpermit')) return 'Precisa do Alvará de Balneário';
     const g = GROUP_OF[q.g];
     if (g.some(x => st.props[x].m)) return 'Há lugar hipotecado no grupo';
     if (pr.lien) return 'Está de garantia num fiado';
@@ -200,7 +201,7 @@
     const from = p.pos, raw = from + n, to = ((raw % SIZE) + SIZE) % SIZE, passed = n > 0 && raw >= SIZE;
     p.pos = to;
     const earn = passed ? salary(st) : 0;
-    if (passed) { p.cash += earn; p.swap = true; }
+    if (passed) { p.cash += earn; p.swap = true; if (V2 && on(st, 'shop')) st.shopPass = true; }
     emit(st, 'move', { who: p.i, from, to, steps: n, salary: earn, msg: passed ? `${p.name} passa pelo Marco Zero e recebe ${brl(earn)}` : undefined });
     if (passed) wealthTax(st, p);
     land(st, p, ctx);
@@ -285,6 +286,7 @@
     if (!V2 || at < 0) return 'Você não tem essa carta da Lojinha';
     if (!['roll', 'post', 'buy', 'casino', 'shop', 'rent'].includes(st.phase)) return 'Resolva a decisão atual antes de usar uma carta';
     const c = itemDef(p.items[at].id), kind = c.kind;
+    if (kind === 'permit') return 'O alvará é usado automaticamente ao construir em Balneário Camboriú';
     if (p.jail && kind !== 'jail') return 'Saia da Delegacia antes de usar essa carta';
     if (kind === 'jail' && (!p.jail || st.phase !== 'roll')) return 'Use esta carta na Delegacia antes de lançar';
     if (st.phase === 'rent' && kind !== 'rent') return 'Pague o aluguel ou use uma carta de aluguel';
@@ -295,7 +297,9 @@
     if (['rent', 'buy', 'build', 'casino'].includes(kind)) {
       p.activeItems[kind] = { id: c.id, name: c.name, factor: c.factor };
       if (kind === 'rent' && st.pendingRent) { chargeRent(st, st.pendingRent); settle(st); }
-    } else if (kind === 'cash') gain(st, i, c.amount, c.name);
+    } else if (kind === 'freeplot') { const free = OWNABLE.filter(s => SQ[s].k === 'prop' && st.props[s].owner === null).sort((a,b) => SQ[a].price - SQ[b].price)[0]; if (free === undefined) gain(st, i, 50, c.name); else { st.props[free].owner = i; emit(st, 'bought', { who: i, sq: free, amt: 0, msg: `${p.name} ganhou ${SQ[free].name}` }); } }
+    else if (kind === 'fine') { pay(st, i, null, c.amount, c.name); settle(st); }
+    else if (kind === 'cash') gain(st, i, c.amount, c.name);
     else if (kind === 'jail') { p.jail = false; p.tries = 0; emit(st, 'free', { who: i, msg: `${p.name} usou um alvará de soltura` }); }
     else if (kind === 'move') {
       // Viajar antes do lançamento substitui o lançamento; evita repetir a ação ao retornar de uma compra.
@@ -317,6 +321,7 @@
     if (st.buy !== null) { st.phase = 'buy'; return; }
     const cur = st.players[st.turn];
     if (cur.out) { nextTurn(st); return; }
+    if (st.shopPass) { st.shop = true; st.shopPass = false; st.phase = 'shop'; return; }
     if (st.shop) { st.phase = 'shop'; return; }
     if (st.sponsor) { st.phase = 'sponsor'; return; }
     if (st.casino) { st.phase = 'casino'; return; }
@@ -554,7 +559,8 @@
       case 'shopspin': {
         if (!V2 || st.phase !== 'shop' || !st.shop) return 'Só dá para girar ao cair na Lojinha';
         if (p.cash < SHOP_COST) return 'Você precisa de R$ 25.000 para girar';
-        const id = ITEMS[Math.floor(rand(st) * ITEMS.length)].id, item = { uid: st.nextItemId++, id };
+        const chance = rand(st) * 100; let cumulative = 0; const rarity = Object.keys(D.RARITIES).find(k => (cumulative += D.RARITIES[k].chance) > chance); const pool = ITEMS.filter(c => c.rarity === rarity);
+        const id = pool[Math.floor(rand(st) * pool.length)].id, item = { uid: st.nextItemId++, id };
         pay(st, i, null, SHOP_COST, 'roleta da Lojinha'); p.items.push(item); st.shop = false;
         emit(st, 'shopSpin', { who: i, item, msg: `${p.name} ganhou ${itemDef(id).name} na Lojinha` }); settle(st); return null;
       }
@@ -712,6 +718,7 @@
     } else if (a.type === 'build') {
       const err = canBuild(st, i, s); if (err) return err;
       const pr = st.props[s], cost = buildCost(st, s); if (p.activeItems?.build) delete p.activeItems.build; p.cash -= cost; tally(p, 'built');
+      if (V2 && q.name === 'Balneário Camboriú') p.items.splice(p.items.findIndex(c => c.id === 'bcpermit'), 1);
       if (pr.h === 4) { st.bank.hotels--; st.bank.houses += 4; pr.h = 5; } else { st.bank.houses--; pr.h++; }
       emit(st, 'build', { who: i, sq: s, h: pr.h, amt: cost, msg: `${p.name} construiu ${LEVEL_ART[pr.h]} em ${q.name}` });
     } else if (a.type === 'sell') {

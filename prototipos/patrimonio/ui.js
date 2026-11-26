@@ -22,7 +22,7 @@
   const placeStatus = s => { const q = SQ[s], pr = st.props[s]; return pr.m ? (st.rules?.mortgage ? `hipotecada: ${Engine.roundsToSeize(st, s)} voltas` : 'hipotecada') : pr.lien ? 'garantia de fiado' : pr.owner === null ? brl(q.price) : q.k === 'util' ? 'aluguel pelos dados' : 'aluguel ' + brl(Engine.rentOf(st, s)); };
   const pips = s => { const pr = st.props[s]; return SQ[s].k !== 'prop' ? '' : `<span class="pc-lv">${pr.x ? '<em>Puxadinho</em>' : pr.h ? `<em>${Engine.LEVELS[pr.h]}</em>` : ''}</span>`; };
   // carta pequena de um lugar: faixa da cor do grupo, desenho, nome e o que rende agora
-  const pcard = (s, { sel, attrs = '', tag = 'button', off, price } = {}) => { const q = SQ[s], pr = st.props[s]; return `<${tag} class="pc ${sel ? 'sel' : ''} ${pr.m ? 'm' : ''}" data-s="${s}" style="--gc:${G[q.g].c}" ${attrs} ${off ? 'disabled title="Grupo com construção ou garantia de fiado não entra"' : ''}><span class="pc-art"><img alt="" src="${artURL(s)}"></span><b>${esc(q.name)}</b><small>${placeStatus(s)}</small>${price ? `<small class="pc-price">Tabela: <b>${brl(q.price)}</b></small>` : ''}${pips(s)}</${tag}>`; };
+  const pcard = (s, { sel, attrs = '', tag = 'button', off, price } = {}) => { const q = SQ[s], pr = st.props[s]; return `<${tag} class="pc ${sel ? 'sel' : ''} ${pr.m ? 'm' : ''}" data-s="${s}" style="--gc:${q.streetColor || G[q.g].c}" ${attrs} ${off ? 'disabled title="Grupo com construção ou garantia de fiado não entra"' : ''}><span class="pc-art"><img alt="" src="${artURL(s)}"></span><b>${esc(q.name)}</b><small>${placeStatus(s)}</small>${price ? `<small class="pc-price">Tabela: <b>${brl(q.price)}</b></small>` : ''}${pips(s)}</${tag}>`; };
   const CAS_GAMES = [
     ['roleta', 'Roleta', V2 ? 'até 40×' : 'até 30×', '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="#6a3419" stroke="#3a2614" stroke-width="2"/><circle cx="24" cy="24" r="17" fill="#17151a"/><g fill="#c8201f"><path d="M24 7a17 17 0 0 1 12 5L24 24z"/><path d="M41 24a17 17 0 0 1-5 12L24 24z"/><path d="M24 41a17 17 0 0 1-12-5l12-12z"/><path d="M7 24a17 17 0 0 1 5-12l12 12z"/></g><circle cx="24" cy="24" r="8" fill="#e0b44e" stroke="#3a2614" stroke-width="1.5"/><path d="M24 18v12M18 24h12" stroke="#7a5208" stroke-width="2"/><circle cx="35" cy="11" r="3" fill="#fff" stroke="#3a2614"/></svg>'],
   ];
@@ -223,7 +223,7 @@
     return el;
   }
   function deedEl(s, extra = '') {
-    const q = SQ[s], g = G[q.g], el = document.createElement('div'); el.className = 'deed'; el.style.setProperty('--g', g.c); el.style.setProperty('--band', `url(${Art.bandURL(g.c, g.d)})`);
+    const q = SQ[s], g = G[q.g], el = document.createElement('div'); el.className = 'deed'; el.style.setProperty('--g', q.streetColor || g.c); el.style.setProperty('--band', `url(${Art.bandURL(g.c, g.d)})`);
     el.innerHTML = `<header><small>${q.price ? 'Título de posse' : 'Casa especial'}</small><h2>${esc(q.name)}</h2>${q.place ? `<em>${esc(q.place)}</em>` : ''}</header><div class="art"></div><div class="body">${q.price ? rentRows(s) : ''}${extra}</div><div class="acts"></div>`;
     if (q.art) el.querySelector('.art').append(Art.sceneCanvas(q, 660));
     el.append(eyeBtn());
@@ -408,7 +408,7 @@
     const A = st.auction; const shown = ev ? { sq: A?.sq ?? ev.sq, high: ev.amt, by: ev.who } : A; if (!shown || shown.sq === undefined) return;
     let el = $('#auction'); if (!el) { el = document.createElement('div'); el.id = 'auction'; $('#hud').append(el); }
     const s = shown.sq, q = SQ[s], g = G[q.g], by = shown.by, has = by !== null && by !== undefined, cur = has ? by : null, leader = has ? st.players[by] : null;
-    el.style.setProperty('--g', g.c); el.style.setProperty('--band', `url(${Art.bandURL(g.c, g.d)})`);
+    el.style.setProperty('--g', q.streetColor || g.c); el.style.setProperty('--band', `url(${Art.bandURL(g.c, g.d)})`);
     // o campo de lance sobrevive à repintura se alguém estiver digitando
     const row = el.querySelector('#a-row');
     el.innerHTML = `<header><small>Leilão</small><h2>${esc(q.name)}</h2><em>${q.place ? esc(q.place) + ' · ' : ''}Tabela: ${brl(q.price)}</em><em class="a-sum">Maior lance: ${brl(shown.high)}${leader ? ' · ' + esc(leader.name) : ''}</em></header>
@@ -529,6 +529,7 @@
     const bar = $('#bar'), has = t => [...bar.children].some(b => b.textContent.includes(t)), me = st.players[ME];
     if (!has('Patrimônio') && !has('Vender ou')) bar.append(btn('Patrimônio', () => portfolio(ME)));
     if (!has('Negociar')) bar.append(btn('Negociar', () => tradeBox(ME)));
+    if (V2 && !has('Ver cartas da roleta')) bar.append(btn('Ver cartas da roleta', shopCatalog));
     if (V2 && !has('Minhas cartas')) bar.append(btn(`Minhas cartas (${me.items.length})`, () => itemsBox(ME)));
     const ib = [...bar.children].find(b => b.textContent.includes('Minhas cartas')); if (ib) ib.lastChild.textContent = `Minhas cartas (${me.items.length})`;
     if (st.rules?.contracts && me.contracts.length && !has('Contratos')) bar.append(btn('Contratos', () => contractsBox(ME)));
@@ -648,7 +649,7 @@
   function unpeek() { document.querySelectorAll('.peeked').forEach(x => x.classList.remove('peeked')); }
   function eyeBtn(cls = 'a-eye') { const m = document.createElement('button'); m.className = cls; m.title = 'Ver o tabuleiro (toque numa casa para voltar)'; m.setAttribute('aria-label', 'Ver o tabuleiro'); m.innerHTML = ic('eye'); m.onclick = () => { Sound.play('click'); document.querySelectorAll('.sheet, #casino, .deed').forEach(x => x.classList.add('peeked')); }; return m; }
   function minimizable(s) { s.firstElementChild.prepend(eyeBtn('mini')); }
-  function chip(s, sel, cls = '') { const q = SQ[s], pr = st.props[s]; return `<button class="chipb ${pr.m ? 'm' : ''} ${sel ? 'sel' : ''} ${cls}" data-s="${s}" style="--gc:${G[q.g].c}"><i></i><span>${esc(q.name)}<small>${pr.m ? (st.rules?.mortgage ? `hipotecada: ${Engine.roundsToSeize(st, s)} voltas` : 'hipotecada') : pr.lien ? 'garantia de fiado' : pr.x ? 'puxadinho' : pr.h ? Engine.LEVELS[pr.h].toLowerCase() : brl(q.price)}</small></span></button>`; }
+  function chip(s, sel, cls = '') { const q = SQ[s], pr = st.props[s]; return `<button class="chipb ${pr.m ? 'm' : ''} ${sel ? 'sel' : ''} ${cls}" data-s="${s}" style="--gc:${q.streetColor || G[q.g].c}"><i></i><span>${esc(q.name)}<small>${pr.m ? (st.rules?.mortgage ? `hipotecada: ${Engine.roundsToSeize(st, s)} voltas` : 'hipotecada') : pr.lien ? 'garantia de fiado' : pr.x ? 'puxadinho' : pr.h ? Engine.LEVELS[pr.h].toLowerCase() : brl(q.price)}</small></span></button>`; }
   // ---------- votação para expulsar quem sumiu ----------
   let vote = null, voteIv = 0;
   const playing = i => i >= 0 && st && !st.players[i].out;
@@ -733,9 +734,9 @@
     }
     acts.append(btn('Fechar', closeDeed, 'ghost'));
   }
-  const itemHTML = c => `<article class="shop-item"><span aria-hidden="true">🎴</span><h3>${esc(c.name)}</h3><p>${esc(c.text)}</p></article>`;
+  const itemHTML = c => `<article class="shop-item" style="--rarity:${PD.RARITIES[c.rarity].color}"><img src="${c.art}" alt=""><small>${PD.RARITIES[c.rarity].name}</small><h3>${esc(c.name)}</h3><p>${esc(c.text)}</p></article>`;
   function shopCatalog() {
-    sheet(`<button class="close" data-x>✕</button><h2>Roleta da Lojinha</h2><p class="sub">Uma rodada por visita custa ${brl(Engine.SHOP_COST)}. As ${Engine.ITEMS.length} cartas têm a mesma chance. Cada carta vale uma utilização. Você pode acumular e negociar quantas quiser.</p><div class="shop-grid">${Engine.ITEMS.map(itemHTML).join('')}</div>`).firstElementChild.classList.add('wide');
+    sheet(`<button class="close" data-x>✕</button><h2>Roleta da Lojinha</h2><p class="sub">Uma rodada por visita custa ${brl(Engine.SHOP_COST)}. Raridades: ${Object.values(PD.RARITIES).map(r => `${r.name} ${r.chance}%`).join(' · ')}. Dentro de cada raridade, as cartas têm chances iguais. Cada carta vale uma utilização. Você pode acumular e negociar quantas quiser.</p><div class="shop-grid">${Engine.ITEMS.map(itemHTML).join('')}</div>`).firstElementChild.classList.add('wide');
   }
   function itemsBox(i) {
     const p = st.players[i], active = Object.values(p.activeItems || {});
@@ -744,10 +745,11 @@
   async function shopSpin(e) {
     closeLoose(); const card = Engine.itemDef(e.item.id), index = Engine.ITEMS.findIndex(c => c.id === card.id), n = Engine.ITEMS.length;
     const el = document.createElement('div'); el.className = 'shop-spin';
-    const colors = ['#9257bd', '#278f79', '#c47c23', '#366cba'];
-    el.innerHTML = `<h2>Roleta da Lojinha</h2><p>${esc(st.players[e.who].name)}</p><div class="shop-wheel-wrap"><i class="shop-pointer"></i><div class="shop-wheel" style="background:conic-gradient(${Engine.ITEMS.map((c, k) => `${colors[k % colors.length]} ${k / n * 360}deg ${(k + 1) / n * 360}deg`).join(',')})">${Engine.ITEMS.map((c, k) => `<span style="--angle:${(k + .5) / n * 360}deg">${k + 1}</span>`).join('')}</div></div><div class="shop-prize" hidden>${itemHTML(card)}<small>Carta guardada no inventário · pode ser negociada</small></div>`;
+    const sequence = Array.from({length:32}, (_, j) => j === 27 ? card : Engine.ITEMS[Math.floor(Math.random() * n)]);
+    el.innerHTML = `<h2>Roleta da Lojinha</h2><p>${esc(st.players[e.who].name)}</p><div class="shop-track-window"><i class="shop-track-pointer"></i><div class="shop-track">${sequence.map(c => `<div class="shop-track-card" style="--rarity:${PD.RARITIES[c.rarity].color}"><img src="${c.art}" alt=""><small>${PD.RARITIES[c.rarity].name}</small><b>${esc(c.name)}</b></div>`).join('')}</div></div><div class="shop-prize" hidden>${itemHTML(card)}<small>Carta guardada no inventário · pode ser negociada</small></div>`;
     $('#stage').append(el); Sound.play('roulette');
-    await el.querySelector('.shop-wheel').animate([{ transform: 'rotate(0deg)' }, { transform: `rotate(${1440 - (index + .5) / n * 360}deg)` }], { duration: 2000 / base, easing: 'cubic-bezier(.12,.65,.12,1)', fill: 'forwards' }).finished;
+    const track = el.querySelector('.shop-track'), cell = track.firstElementChild.getBoundingClientRect().width + 10, target = 27 * cell - (el.querySelector('.shop-track-window').clientWidth - cell + 10) / 2;
+    await track.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${-target}px)` }], { duration: 2600 / base, easing: 'cubic-bezier(.12,.7,.08,1)', fill: 'forwards' }).finished;
     el.querySelector('.shop-prize').hidden = false; Sound.play('good');
     await new Promise(resolve => { const timer = setTimeout(resolve, 2200 / base); el.onclick = () => { clearTimeout(timer); resolve(); }; }); el.remove();
   }
