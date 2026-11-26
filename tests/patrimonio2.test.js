@@ -36,6 +36,18 @@ for (const item of D.ITEMS) assert.ok(require('fs').existsSync(require('path').j
   assert.strictEqual(s.players[0].cash, cash); assert.notStrictEqual(s.phase, 'shop');
 }
 assert.strictEqual(JSON.stringify(classic), classicSnapshot);
+{
+  const s = game(); s.props[sq('Búzios')].owner = 1; s.props[sq('Leblon')].owner = 1;
+  ok(s, { type: 'offer', to: 1, give: { cash: 10 }, want: { props: [sq('Búzios')] } });
+  ok(s, { type: 'offer', to: 1, give: { cash: 20 }, want: { props: [sq('Leblon')] } });
+  assert.strictEqual(s.offers.length, 2);
+  const [first, second] = s.offers.map(o => o.id);
+  ok(s, { type: 'reject', id: first }, 1);
+  assert.deepStrictEqual(s.offers.map(o => o.id), [second]);
+  ok(s, { type: 'accept', id: second }, 1);
+  assert.strictEqual(s.props[sq('Leblon')].owner, 0);
+  assert.strictEqual(s.offers.length, 0);
+}
 for (const g of Object.values(E.GROUP_OF)) {
   const costs = g.map(s => D.SQ[s].house).filter(Boolean);
   costs.forEach((cost, i) => assert.ok(!i || cost > costs[i - 1]));

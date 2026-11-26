@@ -518,8 +518,9 @@
     if (busy) return; // no meio da animação a mesa mostrada ainda não chegou ao estado novo; o pump redesenha ao terminar
     try { drawControls(); } catch (err) { console.error('controles', err); ctlKey = null; }
     // proposta para mim aparece a qualquer hora, sem ser a minha vez; some quando é respondida ou expira
-    const ok = st && ME >= 0 && st.offer?.to === ME ? JSON.stringify(st.offer) : null;
-    if (ok !== offerKey) { offerKey = ok; if (document.querySelector('.sheet.offer')) closeSheet(); if (ok) showOffer(); }
+    const received = st && ME >= 0 ? (st.offers || (st.offer ? [st.offer] : [])).filter(o => o.to === ME) : [];
+    const ok = JSON.stringify(received.map(o => o.id ?? o.turns));
+    if (ok !== offerKey) { offerKey = ok; if (document.querySelector('.sheet.offer')) closeSheet(); if (received.length) showOffer(); }
     if (st && st.phase !== 'over' && ME < 0) { // quem assiste brinca com o próprio peão, do lado de fora da mesa
       const bar = $('#bar');
       if (![...bar.children].some(b => b.textContent.includes('Pular'))) bar.append(btn('Pular', () => send({ t: 'specAct', k: 'pular' })), btn('Girar', () => send({ t: 'specAct', k: 'girar' })), btn('Comemorar', () => send({ t: 'specAct', k: 'festa' })));
@@ -529,6 +530,7 @@
     const bar = $('#bar'), has = t => [...bar.children].some(b => b.textContent.includes(t)), me = st.players[ME];
     if (!has('Patrimônio') && !has('Vender ou')) bar.append(btn('Patrimônio', () => portfolio(ME)));
     if (!has('Negociar')) bar.append(btn('Negociar', () => tradeBox(ME)));
+    if (received.length && !has('Propostas')) bar.append(btn(`Propostas (${received.length})`, () => showOffer()));
     if (V2 && !has('Ver cartas da roleta')) bar.append(btn('Ver cartas da roleta', shopCatalog));
     if (V2 && !has('Minhas cartas')) bar.append(btn(`Minhas cartas (${me.items.length})`, () => itemsBox(ME)));
     const ib = [...bar.children].find(b => b.textContent.includes('Minhas cartas')); if (ib) ib.lastChild.textContent = `Minhas cartas (${me.items.length})`;
@@ -787,14 +789,17 @@
     };
     draw();
   }
-  function showOffer() {
-    const o = st.offer, A = st.players[o.from], B = st.players[o.to];
+  function showOffer(selectedId) {
+    const received = (st.offers || (st.offer ? [st.offer] : [])).filter(o => o.to === ME);
+    if (!received.length) return;
+    const o = received.find(x => x.id === selectedId) || received[0], A = st.players[o.from], B = st.players[o.to];
     const list = (side, owner) => { const extra = [...(side.items || []).map(uid => { const c = owner.items?.find(c => c.uid === uid); return c ? `🎴 ${esc(itemName(c))}` : 'Carta já usada'; }), side.cash ? brl(side.cash) : '', side.cards ? 'Habeas corpus' : '', side.passes ? `${side.passes} ${side.passes === 1 ? 'passe livre' : 'passes livres'}` : ''].filter(Boolean).map(t => `<div class="offerline">${t}</div>`).join(''), props = side.props.map(s => pcard(s, { tag: 'div', price: true })).join(''); return `${props ? `<div class="pc-grid small">${props}</div>` : ''}${extra}` || '<p class="empty">Nada</p>'; };
-    sheet(`<h2>Proposta</h2><p class="sub">${esc(A.name)} quer negociar. ${esc(B.name)} decide.${o.give.props.some(s => st.props[s].m) ? ' Lugar hipotecado paga 10% de juros ao mudar de dono.' : ''}</p><div class="t-grid"><div class="tc g" style="--c:${A.color}">${whoCard(A, 'Faz a proposta')}<h3>${esc(B.name)} recebe</h3>${list(o.give, A)}</div><div class="t-sw" aria-hidden="true">⇄</div><div class="tc w" style="--c:${B.color}">${whoCard(B, 'Decide')}<h3>${esc(B.name)} dá</h3>${list(o.want, B)}</div></div><div class="row-end"><button class="btn" id="no">Recusar</button><button class="btn pri" id="yes" data-primary>Aceitar</button></div>`, box => {
-      box.querySelector('#yes').onclick = () => { closeSheet(); act(o.to, { type: 'accept' }); };
-      box.querySelector('#no').onclick = () => { closeSheet(); act(o.to, { type: 'reject' }); };
+    sheet(`<button class="close" data-x>✕</button><h2>Propostas (${received.length})</h2>${received.length > 1 ? `<div class="row-end">${received.map((x, n) => `<button class="btn ${x === o ? 'pri' : ''}" data-offer="${x.id}">${n + 1}. ${esc(st.players[x.from].name)}</button>`).join('')}</div>` : ''}<p class="sub">${esc(A.name)} quer negociar. ${esc(B.name)} decide.${o.give.props.some(s => st.props[s].m) ? ' Lugar hipotecado paga 10% de juros ao mudar de dono.' : ''}</p><div class="t-grid"><div class="tc g" style="--c:${A.color}">${whoCard(A, 'Faz a proposta')}<h3>${esc(B.name)} recebe</h3>${list(o.give, A)}</div><div class="t-sw" aria-hidden="true">⇄</div><div class="tc w" style="--c:${B.color}">${whoCard(B, 'Decide')}<h3>${esc(B.name)} dá</h3>${list(o.want, B)}</div></div><div class="row-end"><button class="btn" id="no">Recusar</button><button class="btn pri" id="yes" data-primary>Aceitar</button></div>`, box => {
+      box.querySelectorAll('[data-offer]').forEach(b => b.onclick = () => showOffer(+b.dataset.offer));
+      box.querySelector('#yes').onclick = () => { closeSheet(); act(o.to, { type: 'accept', id: o.id }); };
+      box.querySelector('#no').onclick = () => { closeSheet(); act(o.to, { type: 'reject', id: o.id }); };
     }).firstElementChild.classList.add('wide');
-    const d = document.querySelector('.sheet'); d.onclick = null; d.classList.add('offer');
+    document.querySelector('.sheet').classList.add('offer');
   }
   function finish(w) {
     if (finished) return; finished = true;

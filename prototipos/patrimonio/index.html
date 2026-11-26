@@ -57,6 +57,6 @@
 <div id="stage"><div id="sum"></div></div>
 <div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>for (const f of ['../../js/pat-data.js', '../../js/pat2-data.js', '../../js/pat-engine.js', 'art.js', 'audio.js', 'scene.js', 'ui.js']) { document.write(`<script src="${f}?v=${V}"><\/script>`); if (f.endsWith('pat2-data.js')) document.write('<script>if (ED2) window.PD = window.PD2;<\/script>'); }</script>
+<script>for (const f of ['../../js/pat-data.js', '../../js/pat2-data.js', '../../js/pat-engine.js', 'art.js', 'audio.js', 'scene.js', 'ui.js']) { document.write(`<script src="${f}?v=${V}"><\/script>`); if (f.endsWith('pat2-data.js')) document.write('<script>if (ED2) window.PD = window.PD2;<\/script>'); if (f.endsWith('pat-engine.js')) document.write('<script>if (ED2) window.Engine = Engine.createEngine(PD2);<\/script>'); }</script>
 </body>
 </html>
