@@ -48,6 +48,8 @@ for f in [*[p("js", name + ".js") for name in ["pat-data", "pat2-data", "pat-eng
     pat_scripts.append('<script>\n' + code + '\n</script>')
     if f.endswith('pat2-data.js'):
         pat_scripts.append('<script>if (ED2) window.PD = window.PD2;</script>')
+    if f.endswith('pat-engine.js'):
+        pat_scripts.append('<script>if (ED2) window.Engine = Engine.createEngine(PD2);</script>')
 pat = re.sub(r'<script>for \(const f of .*?</script>', lambda m: '\n'.join(pat_scripts), pat, flags=re.S)
 pat_embedded = json.dumps(pat, ensure_ascii=True).replace('</', '<\\/')
 html = html.replace('const PAT_EMBEDDED = null;', 'const PAT_EMBEDDED = ' + pat_embedded + ';', 1)

@@ -69,12 +69,12 @@ const Patrimonio = (() => {
     const i = idx(st, pid);
     if (i < 0) return 'Você não está nesta partida';
     if (!a || typeof a.type !== 'string') return 'Jogada inválida';
-    const A = st.auction, now = Date.now(), had = !!st.offer, before = JSON.stringify(st);
+    const A = st.auction, now = Date.now(), had = (st.offers?.length || 0) + (st.offer && !st.offers?.length ? 1 : 0), before = JSON.stringify(st);
     if (A) A.ms = Math.max(1, A.deadline - now);
     let err;
     // o que vem da rede não pode derrubar nem deixar a partida pela metade
     try { err = E.act(st, i, a); } catch (e) { console.error('Patrimônio', a, e); Object.keys(st).forEach(k => delete st[k]); Object.assign(st, JSON.parse(before)); return 'Jogada inválida'; }
-    if (err && !(had && !st.offer)) return err; // proposta que deixou de valer some mesmo com erro
+    if (err && !(had > (st.offers?.length || 0))) return err; // proposta que deixou de valer some mesmo com erro
     settle(st);
     return null;
   }

@@ -49,10 +49,10 @@
   // As tabelas usam milhares; descontos do 2.0 preservam até o real, sem arredondar mil reais para cima.
   const discounted = (amount, factor = 1) => Math.round(amount * factor * 1000) / 1000;
 
-  function newGame(players, seed = Date.now() | 0, rules = null) {
+  function newGame(players, seed = (typeof crypto !== 'undefined' && crypto.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : (Date.now() ^ Math.floor(Math.random() * 0xffffffff))), rules = null) {
     const st = {
       edition: D.edition || 1, shop: false, nextItemId: 1, pendingRent: null, seed, ev: [], turn: 0, phase: 'roll', doubles: 0, again: false, dice: [0, 0], debts: [], after: null, buy: null,
-      auction: null, queue: [], offer: null, rounds: 0, winner: null, bank: { houses: 32, hotels: 12 }, mem: {}, turns: 0,
+      auction: null, queue: [], offer: null, offers: [], nextOfferId: 1, rounds: 0, winner: null, bank: { houses: 32, hotels: 12 }, mem: {}, turns: 0,
       props: {}, decks: {}, sp: null, rules, passes: [], loans: [], credit: null, sponsor: false, blitz: false, travel: false, fresh: false, news: null,
       players: players.map((p, i) => ({ i, name: p.name, token: p.token, char: p.char, color: p.color, bot: !!p.bot, cash: 750, pos: 0, jail: false, tries: 0, cards: [], ...(V2 ? { items: [], activeItems: {} } : {}), out: false, contracts: [], dealt: 0, swap: false, stats: {} })),
     };
@@ -330,12 +330,13 @@
     if (st.fresh) { st.fresh = false; st.phase = 'roll'; return; }
     st.phase = st.again && !cur.jail ? 'roll' : 'post';
   }
+  const offersOf = st => st.offers || (st.offers = st.offer ? [st.offer] : []);
   function nextTurn(st) {
     let n = st.turn, wrapped = false;
     do { n = (n + 1) % st.players.length; if (n === 0) { st.rounds++; wrapped = true; } } while (st.players[n].out);
     for (const q of alive(st)) { const t = tally(q, 'peak', 0); t.peak = Math.max(t.peak, worth(st, q.i)); }
     // a proposta vale até o fim da vez seguinte à que ela foi feita
-    if (st.offer && st.turns - (st.offer.turns ?? st.turns) >= 1) { const o = st.offer; st.offer = null; emit(st, 'tradeNo', { a: o.from, b: o.to, msg: `A proposta de ${name(st, o.from)} a ${name(st, o.to)} expirou` }); }
+    st.offers = offersOf(st).filter(o => { if (st.turns - (o.turns ?? st.turns) < 1) return true; emit(st, 'tradeNo', { a: o.from, b: o.to, msg: `A proposta de ${name(st, o.from)} a ${name(st, o.to)} expirou` }); return false; }); st.offer = V2 ? null : st.offers[0] || null;
     st.turn = n; st.doubles = 0; st.again = false; st.phase = 'roll'; st.turns++; st.fresh = false; st.shop = false; st.pendingRent = null; st.sponsor = false; st.casino = false; st.blitz = false; st.travel = false;
     // o lugar mudou de dono: o patrocínio acaba
     if (st.sp && !sponsored(st, st.sp.sq)) { const sq = st.sp.sq; st.sp = null; emit(st, 'sponsorEnd', { sq, msg: `${SQ[sq].name} perdeu o patrocínio` }); }
@@ -455,7 +456,7 @@
     for (const c of p.cards) st.decks[c.deck].push(c.id);
     p.cash = 0; p.cards = []; if (V2) { p.items = []; p.activeItems = {}; } p.out = true; p.jail = false; p.outTurn = st.turns; p.outRound = st.rounds + 1;
     st.debts = st.debts.filter(d => d.who !== i).map(d => (d.to === i ? { ...d, to: null } : d));
-    if (st.offer && (st.offer.from === i || st.offer.to === i)) st.offer = null;
+    st.offers = offersOf(st).filter(o => o.from !== i && o.to !== i); st.offer = null;
     if (st.pendingRent?.owner === i) st.pendingRent = null;
     if (st.turn === i) { st.shop = false; st.pendingRent = null; st.after = null; st.sponsor = false; st.casino = false; st.blitz = false; st.travel = false; }
     if (st.turn === i) st.buy = null;
@@ -542,9 +543,9 @@
       return 'Responda o fiado primeiro';
     }
     if (a.type === 'accept' || a.type === 'reject') {
-      if (!st.offer || st.offer.to !== i) return 'Nenhuma proposta para você';
-      const o = st.offer; st.offer = null;
-      if (a.type === 'accept') { const err = checkOffer(st, o); if (err) { emit(st, 'note', { msg: err }); return err; } applyOffer(st, o); } else emit(st, 'tradeNo', { a: o.from, b: o.to, msg: `${name(st, o.to)} recusou a proposta de ${name(st, o.from)}` });
+      const pending = offersOf(st), o = pending.find(x => x.to === i && (a.id === undefined || x.id === a.id));
+      if (!o) return 'Nenhuma proposta para você';
+      if (a.type === 'accept') { const err = checkOffer(st, o); if (err) { st.offers = pending.filter(x => x !== o); st.offer = null; emit(st, 'tradeNo', { a: o.from, b: o.to, msg: `A proposta expirou: ${err}` }); return err; } applyOffer(st, o); st.offers = pending.filter(x => x !== o && !checkOffer(st, x)); } else { st.offers = pending.filter(x => x !== o); emit(st, 'tradeNo', { a: o.from, b: o.to, msg: `${name(st, o.to)} recusou a proposta de ${name(st, o.from)}` }); } st.offer = null;
       return null;
     }
     switch (a.type) {
@@ -745,9 +746,9 @@
       if (!st.players[a.to] || st.players[a.to].out || a.to === i) return 'Escolha outro jogador';
       const o = { from: i, to: a.to, give: side(a.give), want: side(a.want) };
       if (!o.give.cash && !o.want.cash && !o.give.props.length && !o.want.props.length && !o.give.cards && !o.want.cards && !o.give.passes && !o.want.passes && !o.give.items.length && !o.want.items.length) return 'A proposta está vazia';
-      if (st.offer) return 'Já tem uma proposta aguardando resposta';
+      if (!V2 && st.offer) return 'Já tem uma proposta aguardando resposta';
       const err = checkOffer(st, o); if (err) return err;
-      o.turns = st.turns; st.offer = o;
+      o.turns = st.turns; o.id = st.nextOfferId || 1; st.nextOfferId = o.id + 1; offersOf(st).push(o); if (!V2) st.offer = o;
       emit(st, 'offered', { from: i, to: a.to, msg: `${p.name} fez uma proposta a ${name(st, a.to)}` });
     }
     return null;
@@ -793,7 +794,7 @@
     return null;
   }
   function botPropose(st, i) {
-    if (st.offer) return null;
+    if ((!V2 && st.offer) || offersOf(st).some(o => o.from === i)) return null;
     const p = st.players[i], mem = st.mem[i] = st.mem[i] || {};
     for (const g of Object.values(GROUP_OF)) {
       if (SQ[g[0]].k === 'util') continue;
@@ -832,13 +833,14 @@
       if (c.stage === 'ask') return c.rate >= 12 ? { type: 'creditYes' } : p.cash > 130 ? { type: 'creditCounter', rate: 15 } : { type: 'creditNo' };
       return { type: c.rate <= 30 ? 'creditYes' : 'creditNo' };
     }
-    if (st.offer && st.offer.to === i) {
-      const o = st.offer; let net = ((o.give.items?.length || 0) - (o.want.items?.length || 0)) * 25 + o.give.cash - o.want.cash + (o.give.cards - o.want.cards) * 35 + (o.give.passes || 0) * passValue(st, o.from) - (o.want.passes || 0) * passValue(st, i);
+    const received = offersOf(st).find(o => o.to === i);
+    if (received) {
+      const o = received; let net = ((o.give.items?.length || 0) - (o.want.items?.length || 0)) * 25 + o.give.cash - o.want.cash + (o.give.cards - o.want.cards) * 35 + (o.give.passes || 0) * passValue(st, o.from) - (o.want.passes || 0) * passValue(st, i);
       const ps = st.players[i].cash;
       for (const s of o.give.props) net += valueOf(st, i, s, true);
       for (const s of o.want.props) { net -= valueOf(st, i, s, false); if (GROUP_OF[SQ[s].g].every(x => x === s || st.props[x].owner === o.from)) net -= SQ[s].price * 1.1; }
       const after = ps + o.give.cash - o.want.cash;
-      return { type: net > 0 && after >= 0 && !checkOffer(st, o) ? 'accept' : 'reject' };
+      return { type: net > 0 && after >= 0 && !checkOffer(st, o) ? 'accept' : 'reject', id: o.id };
     }
     if (st.phase !== 'auction' && actor(st) !== i) return null; // no leilão qualquer um decide a qualquer hora
     if (st.phase === 'debt') {
