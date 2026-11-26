@@ -861,7 +861,7 @@ const Stage = (() => {
     return g;
   }
   function setHouses(i, h, animate = true) {
-    ensureGeos(); const t = tiles[i], col = PD.GROUPS[t.q.g].c, prev = t.h; t.h = h;
+    ensureGeos(); const t = tiles[i], col = (t.q.streetColor || PD.GROUPS[t.q.g].c), prev = t.h; t.h = h;
     const z = -TD / 2 + (h === 5 ? .48 : h >= 3 ? .42 : .38), big = h >= 2;
     t.lots.clear();
     const items = !h ? [] : [h === 5 ? hotel(col) : h === 4 ? building(col, 4) : h === 3 ? mansao(col) : h === 2 ? sobrado(col) : house(col)];
@@ -914,7 +914,7 @@ const Stage = (() => {
     ensureGeos(); const t = tiles[i];
     if (t.pux) { t.lots.remove(t.pux); t.pux = null; }
     if (!on) return;
-    const b = house(PD.GROUPS[t.q.g].c); b.position.set(0, .05, -TD / 2 + .3); t.lots.add(b); t.pux = b;
+    const b = house((t.q.streetColor || PD.GROUPS[t.q.g].c)); b.position.set(0, .05, -TD / 2 + .3); t.lots.add(b); t.pux = b;
     if (animate) tw(360, k => b.scale.setScalar(.8 * Math.min(1, k * 1.15)), ease.out); else b.scale.setScalar(.8);
   }
   function setOwner(i, color) {

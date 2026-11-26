@@ -17,8 +17,8 @@ const Patrimonio = (() => {
     ['contracts', 'Contratos secretos', 'Cada um recebe 2 metas ocultas que pagam prêmio ao serem cumpridas.'],
   ];
   if (PD_.edition === 2) {
-    RULE_LIST.splice(RULE_LIST.findIndex(([k]) => k === 'sponsor'), 1, ['shop', 'Lojinha', 'Ao cair, gire uma vez por R$ 25.000 e ganhe uma carta. Guarde, use ou negocie com os amigos.']);
-    RULE_LIST.find(([k]) => k === 'casino')[2] = 'Sem teto de aposta: até todo o saldo. Vermelho 2×, preto 3×, número 30× e verde 40×.';
+    RULE_LIST.splice(RULE_LIST.findIndex(([k]) => k === 'sponsor'), 1, ['shop', 'Lojinha', 'Ao cair ou passar pelo Marco Zero, gire uma vez por R$ 25.000 e ganhe uma carta. Guarde, use ou negocie com os amigos.']);
+    RULE_LIST.find(([k]) => k === 'casino')[2] = 'Sem teto de aposta: até todo o saldo. Vermelho 2×, preto 2×, número 30× e verde 40×.';
   }
   const LOG = 40, INTRO_MS = 8000; // abertura com o sorteio da ordem nos dados
   // quanto cada evento leva na tela: o anfitrião espera isso antes de um bot jogar ou o relógio correr

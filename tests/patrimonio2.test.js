@@ -21,9 +21,20 @@ assert.strictEqual(D.SQ.filter(q => q.k === 'casino').length, 2);
 assert.strictEqual(D.SQ.filter(q => q.k === 'util').length, 3);
 assert.deepStrictEqual(D.SQ.slice(sq('São Paulo') + 1, 39).map(q => q.k), ['prop', 'casino', 'mutirao']);
 assert.deepStrictEqual(D.SQ.slice(5, 9).map(q => q.name), ['Porto Alegre', 'Imposto de Renda', 'Gramado', 'Canela']);
-assert.deepStrictEqual(D.SQ.slice(19, 22).map(q => q.name), ['Lisboa', 'Usina Hidrelétrica', 'Porto']);
-assert.deepStrictEqual(D.SQ.slice(48).map(q => q.name), ['Miami', 'Sorte', 'Nova York', 'Dubai']);
+assert.deepStrictEqual(D.SQ.slice(19, 22).map(q => q.name), ['Florianópolis', 'Usina Hidrelétrica', 'Jurerê Internacional']);
+assert.deepStrictEqual(D.SQ.slice(48).map(q => q.name), ['Búzios', 'Sorte', 'Leblon', 'Itaim Bibi']);
 assert.ok(D.SQ.filter(q => q.g === 'mundo').every(q => q.price > 270));
+assert.strictEqual(Object.values(D.RARITIES).reduce((n,r) => n+r.chance, 0), 100);
+assert.strictEqual(new Set(D.SQ.filter(q => q.k === 'prop').map(q => q.streetColor)).size, D.SQ.filter(q => q.k === 'prop').length);
+assert.ok(D.SQ.filter(q => q.k === 'prop').every(q => !/Portugal|EUA|Emirados/.test(q.place)));
+for (const item of D.ITEMS) assert.ok(require('fs').existsSync(require('path').join(__dirname, '../prototipos/patrimonio', item.art)));
+{
+  const s = game(73), probe = game(73); ok(probe, { type: 'roll' });
+  s.players[0].pos = 52 - probe.dice[0] - probe.dice[1] + 1;
+  ok(s, { type: 'roll' }); if (s.phase === 'buy') ok(s, { type: 'decline' }); assert.strictEqual(s.phase, 'shop');
+  const cash = s.players[0].cash; ok(s, { type: 'shopskip' });
+  assert.strictEqual(s.players[0].cash, cash); assert.notStrictEqual(s.phase, 'shop');
+}
 assert.strictEqual(JSON.stringify(classic), classicSnapshot);
 for (const g of Object.values(E.GROUP_OF)) {
   const costs = g.map(s => D.SQ[s].house).filter(Boolean);
@@ -47,10 +58,10 @@ assert.ok(D.CARDS.destino.some(c => /Rio de Janeiro/.test(c.t) && c.e.goto === s
 // O grupo de uma única propriedade permite construir sem outras compras.
 {
   const s = game(), b = sq('Balneário Camboriú'); s.props[b].owner = 0;
-  assert.strictEqual(E.canBuild(s, 0, b), null); ok(s, { type: 'build', sq: b });
-  assert.strictEqual(s.props[b].h, 1);
-  s.props[sq('Miami')].owner = 0;
-  assert.match(E.canBuild(s, 0, sq('Miami')), /grupo inteiro/);
+  assert.match(E.canBuild(s, 0, b), /Alvará/); add(s, 'bcpermit'); assert.strictEqual(E.canBuild(s, 0, b), null); ok(s, { type: 'build', sq: b });
+  assert.strictEqual(s.props[b].h, 1); assert.ok(!s.players[0].items.some(c => c.id === 'bcpermit'));
+  s.props[sq('Búzios')].owner = 0;
+  assert.match(E.canBuild(s, 0, sq('Búzios')), /grupo inteiro/);
 }
 // Três usinas cobram 10×, inclusive ao chegar pela carta de Sorte.
 {
@@ -100,7 +111,7 @@ for (const name of ['Cassino', 'Cassino Royale']) assert.strictEqual(arrive(sq(n
 }
 // Compra e obra consomem um desconto cada, sem acumular cartas do mesmo tipo.
 {
-  const s = game(), at = sq('Miami'); s.buy = at; s.phase = 'buy';
+  const s = game(), at = sq('Búzios'); s.buy = at; s.phase = 'buy';
   const first = add(s, 'buy50'), second = add(s, 'buy25');
   ok(s, { type: 'useitem', uid: first }); assert.strictEqual(E.buyPrice(s, at), 160);
   assert.ok(E.act(s, 0, { type: 'useitem', uid: second }));
@@ -108,7 +119,7 @@ for (const name of ['Cassino', 'Cassino Royale']) assert.strictEqual(arrive(sq(n
   ok(s, { type: 'buy' }); assert.strictEqual(s.players[0].cash, 590); assert.ok(!s.players[0].activeItems.buy);
   const b = sq('Balneário Camboriú'); s.props[b].owner = 0;
   ok(s, { type: 'useitem', uid: add(s, 'build50') });
-  const cost = E.buildCost(s, b); assert.strictEqual(cost, 95); ok(s, { type: 'build', sq: b });
+  add(s, 'bcpermit'); const cost = E.buildCost(s, b); assert.strictEqual(cost, 95); ok(s, { type: 'build', sq: b });
   assert.strictEqual(E.buildCost(s, b), 190);
   const firstGroup = sq('Santarém'); s.props[firstGroup].owner = 0;
   ok(s, { type: 'useitem', uid: add(s, 'build50') }); ok(s, { type: 'pux', sq: firstGroup });
@@ -148,7 +159,7 @@ for (const [id, expected] of [['rent25', 75], ['rent50', 50], ['rentfree', 0]]) 
   assert.strictEqual(s.players[0].cash, 700); assert.ok(!s.players[0].activeItems.rent);
 }
 // Sem teto de 50 mil; verde paga 40×, número zero mantém 30×. Cassino 3× consome mesmo perdendo.
-for (const [pick, boost, multiplier] of [['red', false, 2], ['black', false, 3], [17, false, 30], ['green', false, 40], [0, false, 30], ['red', true, 6], ['black', true, 9], [17, true, 90], ['green', true, 120]]) {
+for (const [pick, boost, multiplier] of [['red', false, 2], ['black', false, 2], [17, false, 30], ['green', false, 40], [0, false, 30], ['red', true, 6], ['black', true, 6], [17, true, 90], ['green', true, 120]]) {
   let won = false;
   for (let seed = 0; seed < 300 && !won; seed++) {
     const s = game(seed); s.phase = 'casino'; s.casino = true; s.players[0].cash = 1000;
@@ -170,7 +181,7 @@ for (const [pick, boost, multiplier] of [['red', false, 2], ['black', false, 3],
     const s = game(seed); s.phase = 'casino'; s.casino = true; s.players[0].cash = 25.5;
     assert.strictEqual(E.maxBet(s, 0), 25.5); ok(s, { type: 'bet', game: 'roleta', pick: 'black', amount: 25.5 });
     const spin = s.ev.find(e => e.t === 'casinoSpin');
-    if (spin.color === 'black') { assert.strictEqual(s.players[0].cash, 76.5); won = true; }
+    if (spin.color === 'black') { assert.strictEqual(s.players[0].cash, 51); won = true; }
   }
   assert.ok(won);
 }
