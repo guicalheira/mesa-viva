@@ -25,7 +25,14 @@ assert.deepStrictEqual(D.SQ.slice(19, 22).map(q => q.name), ['Florianópolis', '
 assert.deepStrictEqual(D.SQ.slice(48).map(q => q.name), ['Búzios', 'Sorte', 'Leblon', 'Itaim Bibi']);
 assert.ok(D.SQ.filter(q => q.g === 'mundo').every(q => q.price > 270));
 assert.strictEqual(Object.values(D.RARITIES).reduce((n,r) => n+r.chance, 0), 100);
-assert.strictEqual(new Set(D.SQ.filter(q => q.k === 'prop').map(q => q.streetColor)).size, D.SQ.filter(q => q.k === 'prop').length);
+const streets = new Map();
+for (const q of D.SQ.filter(q => q.k === 'prop')) {
+  const color = D.GROUPS[q.g].c;
+  if (streets.has(q.g)) assert.strictEqual(color, streets.get(q.g), `${q.name} precisa ter a cor do seu grupo`);
+  else streets.set(q.g, color);
+  assert.strictEqual(q.streetColor, undefined, `${q.name} não deve ter cor individual`);
+}
+assert.strictEqual(new Set(streets.values()).size, streets.size, 'cada grupo precisa ter cor própria');
 assert.ok(D.SQ.filter(q => q.k === 'prop').every(q => !/Portugal|EUA|Emirados/.test(q.place)));
 for (const item of D.ITEMS) assert.ok(require('fs').existsSync(require('path').join(__dirname, '../prototipos/patrimonio', item.art)));
 {

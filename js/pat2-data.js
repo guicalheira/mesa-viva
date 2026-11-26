@@ -3,7 +3,7 @@
   const base = typeof module !== 'undefined' ? require('./pat-data.js') : root.PD;
   const copy = x => JSON.parse(JSON.stringify(x));
   const GROUPS = { ...copy(base.GROUPS),
-    sul: { name: 'Rio Grande do Sul', c: '#43805a', l: '#d9efdf', d: '#235038' },
+    sul: { name: 'Rio Grande do Sul', c: '#778b2d', l: '#e9efcf', d: '#46571a' },
     portugal: { name: 'Santa Catarina', c: '#b7477d', l: '#f6dce9', d: '#74254c' },
     unico: { name: 'Balneário Camboriú · construção livre', c: '#24a99c', l: '#d4f4ef', d: '#10665e' },
     mundo: { name: 'Destinos de luxo do Brasil', c: '#7250c4', l: '#e8defb', d: '#40267f' },
@@ -34,7 +34,6 @@
       prop('mundo', 'Leblon', 'Rio de Janeiro, RJ', 'paulista', 380, [60, 225, 560, 950, 1120, 1280], 300),
       prop('mundo', 'Itaim Bibi', 'São Paulo, SP', 'esplanada', 450, [75, 270, 650, 1080, 1270, 1450], 340));
   });
-  SQ.filter(q => q.k === 'prop').forEach((q, i) => { q.streetColor = `hsl(${(i * 137.508) % 360} 68% 46%)`; });
   const oldToNew = i => SQ.findIndex(q => q.legacyIndex === i);
   const CARDS = copy(base.CARDS);
   for (const deck of Object.values(CARDS)) {
