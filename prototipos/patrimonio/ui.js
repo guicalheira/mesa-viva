@@ -22,7 +22,7 @@
   const placeStatus = s => { const q = SQ[s], pr = st.props[s]; return pr.m ? (st.rules?.mortgage ? `hipotecada: ${Engine.roundsToSeize(st, s)} voltas` : 'hipotecada') : pr.lien ? 'garantia de fiado' : pr.owner === null ? brl(q.price) : q.k === 'util' ? 'aluguel pelos dados' : 'aluguel ' + brl(Engine.rentOf(st, s)); };
   const pips = s => { const pr = st.props[s]; return SQ[s].k !== 'prop' ? '' : `<span class="pc-lv">${pr.x ? '<em>Puxadinho</em>' : pr.h ? `<em>${Engine.LEVELS[pr.h]}</em>` : ''}</span>`; };
   // carta pequena de um lugar: faixa da cor do grupo, desenho, nome e o que rende agora
-  const pcard = (s, { sel, attrs = '', tag = 'button', off, price } = {}) => { const q = SQ[s], pr = st.props[s]; return `<${tag} class="pc ${sel ? 'sel' : ''} ${pr.m ? 'm' : ''}" data-s="${s}" style="--gc:${q.streetColor || G[q.g].c}" ${attrs} ${off ? 'disabled title="Grupo com construção ou garantia de fiado não entra"' : ''}><span class="pc-art"><img alt="" src="${artURL(s)}"></span><b>${esc(q.name)}</b><small>${placeStatus(s)}</small>${price ? `<small class="pc-price">Tabela: <b>${brl(q.price)}</b></small>` : ''}${pips(s)}</${tag}>`; };
+  const pcard = (s, { sel, attrs = '', tag = 'button', off, price } = {}) => { const q = SQ[s], pr = st.props[s]; return `<${tag} class="pc ${sel ? 'sel' : ''} ${pr.m ? 'm' : ''}" data-s="${s}" style="--gc:${G[q.g].c}" ${attrs} ${off ? 'disabled title="Grupo com construção ou garantia de fiado não entra"' : ''}><span class="pc-art"><img alt="" src="${artURL(s)}"></span><b>${esc(q.name)}</b><small>${placeStatus(s)}</small>${price ? `<small class="pc-price">Tabela: <b>${brl(q.price)}</b></small>` : ''}${pips(s)}</${tag}>`; };
   const CAS_GAMES = [
     ['roleta', 'Roleta', V2 ? 'até 40×' : 'até 30×', '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="#6a3419" stroke="#3a2614" stroke-width="2"/><circle cx="24" cy="24" r="17" fill="#17151a"/><g fill="#c8201f"><path d="M24 7a17 17 0 0 1 12 5L24 24z"/><path d="M41 24a17 17 0 0 1-5 12L24 24z"/><path d="M24 41a17 17 0 0 1-12-5l12-12z"/><path d="M7 24a17 17 0 0 1 5-12l12 12z"/></g><circle cx="24" cy="24" r="8" fill="#e0b44e" stroke="#3a2614" stroke-width="1.5"/><path d="M24 18v12M18 24h12" stroke="#7a5208" stroke-width="2"/><circle cx="35" cy="11" r="3" fill="#fff" stroke="#3a2614"/></svg>'],
   ];
@@ -223,7 +223,7 @@
     return el;
   }
   function deedEl(s, extra = '') {
-    const q = SQ[s], g = G[q.g], el = document.createElement('div'); el.className = 'deed'; el.style.setProperty('--g', q.streetColor || g.c); el.style.setProperty('--band', `url(${Art.bandURL(g.c, g.d)})`);
+    const q = SQ[s], g = G[q.g], el = document.createElement('div'); el.className = 'deed'; el.style.setProperty('--g', g.c); el.style.setProperty('--band', `url(${Art.bandURL(g.c, g.d)})`);
     el.innerHTML = `<header><small>${q.price ? 'Título de posse' : 'Casa especial'}</small><h2>${esc(q.name)}</h2>${q.place ? `<em>${esc(q.place)}</em>` : ''}</header><div class="art"></div><div class="body">${q.price ? rentRows(s) : ''}${extra}</div><div class="acts"></div>`;
     if (q.art) el.querySelector('.art').append(Art.sceneCanvas(q, 660));
     el.append(eyeBtn());
@@ -408,7 +408,7 @@
     const A = st.auction; const shown = ev ? { sq: A?.sq ?? ev.sq, high: ev.amt, by: ev.who } : A; if (!shown || shown.sq === undefined) return;
     let el = $('#auction'); if (!el) { el = document.createElement('div'); el.id = 'auction'; $('#hud').append(el); }
     const s = shown.sq, q = SQ[s], g = G[q.g], by = shown.by, has = by !== null && by !== undefined, cur = has ? by : null, leader = has ? st.players[by] : null;
-    el.style.setProperty('--g', q.streetColor || g.c); el.style.setProperty('--band', `url(${Art.bandURL(g.c, g.d)})`);
+    el.style.setProperty('--g', g.c); el.style.setProperty('--band', `url(${Art.bandURL(g.c, g.d)})`);
     // o campo de lance sobrevive à repintura se alguém estiver digitando
     const row = el.querySelector('#a-row');
     el.innerHTML = `<header><small>Leilão</small><h2>${esc(q.name)}</h2><em>${q.place ? esc(q.place) + ' · ' : ''}Tabela: ${brl(q.price)}</em><em class="a-sum">Maior lance: ${brl(shown.high)}${leader ? ' · ' + esc(leader.name) : ''}</em></header>
@@ -651,7 +651,7 @@
   function unpeek() { document.querySelectorAll('.peeked').forEach(x => x.classList.remove('peeked')); }
   function eyeBtn(cls = 'a-eye') { const m = document.createElement('button'); m.className = cls; m.title = 'Ver o tabuleiro (toque numa casa para voltar)'; m.setAttribute('aria-label', 'Ver o tabuleiro'); m.innerHTML = ic('eye'); m.onclick = () => { Sound.play('click'); document.querySelectorAll('.sheet, #casino, .deed').forEach(x => x.classList.add('peeked')); }; return m; }
   function minimizable(s) { s.firstElementChild.prepend(eyeBtn('mini')); }
-  function chip(s, sel, cls = '') { const q = SQ[s], pr = st.props[s]; return `<button class="chipb ${pr.m ? 'm' : ''} ${sel ? 'sel' : ''} ${cls}" data-s="${s}" style="--gc:${q.streetColor || G[q.g].c}"><i></i><span>${esc(q.name)}<small>${pr.m ? (st.rules?.mortgage ? `hipotecada: ${Engine.roundsToSeize(st, s)} voltas` : 'hipotecada') : pr.lien ? 'garantia de fiado' : pr.x ? 'puxadinho' : pr.h ? Engine.LEVELS[pr.h].toLowerCase() : brl(q.price)}</small></span></button>`; }
+  function chip(s, sel, cls = '') { const q = SQ[s], pr = st.props[s]; return `<button class="chipb ${pr.m ? 'm' : ''} ${sel ? 'sel' : ''} ${cls}" data-s="${s}" style="--gc:${G[q.g].c}"><i></i><span>${esc(q.name)}<small>${pr.m ? (st.rules?.mortgage ? `hipotecada: ${Engine.roundsToSeize(st, s)} voltas` : 'hipotecada') : pr.lien ? 'garantia de fiado' : pr.x ? 'puxadinho' : pr.h ? Engine.LEVELS[pr.h].toLowerCase() : brl(q.price)}</small></span></button>`; }
   // ---------- votação para expulsar quem sumiu ----------
   let vote = null, voteIv = 0;
   const playing = i => i >= 0 && st && !st.players[i].out;
