@@ -8,7 +8,7 @@
   const V2 = D.edition === 2, SIZE = SQ.length, JAIL = SQ.findIndex(q => q.k === 'jail'), SALARY = 130, BAIL = 35, SHOP_COST = 25;
   const ITEMS = D.ITEMS || [], itemDef = id => ITEMS.find(c => c.id === id);
   // Regras da casa. Sem elas (partida antiga ou testes) o jogo segue o clássico.
-  const RULES = { mortgage: true, wealth: true, reajuste: true, pux: true, sponsor: true, casino: true, blitz: true, travel: true, passes: true, fiado: true, news: true, contracts: true, ...(V2 ? { sponsor: false, shop: true } : {}), limit: 0 };
+  const RULES = { mortgage: true, wealth: true, reajuste: true, pux: true, sponsor: true, casino: true, blitz: true, travel: true, passes: true, fiado: true, news: true, contracts: true, ...(V2 ? { shop: true } : {}), limit: 0 };
   const on = (st, k) => !!(st.rules && st.rules[k]);
   const MORT = { now: .2, perRound: .1, max: 2, seize: 6, warn: 4 }, WEALTH = { above: 1.5, rate: .08, max: 100 };
   const JEITINHO = 35, TRAVEL = 35, PUX_MAX = 3, PASS_MAX = 3, PASS_MIN = 20;
@@ -51,7 +51,7 @@
 
   function newGame(players, seed = (typeof crypto !== 'undefined' && crypto.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : (Date.now() ^ Math.floor(Math.random() * 0xffffffff))), rules = null) {
     const st = {
-      edition: D.edition || 1, shop: false, nextItemId: 1, pendingRent: null, seed, ev: [], turn: 0, phase: 'roll', doubles: 0, again: false, dice: [0, 0], debts: [], after: null, buy: null,
+      edition: D.edition || 1, shop: false, nextItemId: 1, pendingRent: null, pendingTaxes: [], seed, ev: [], turn: 0, phase: 'roll', doubles: 0, again: false, dice: [0, 0], debts: [], after: null, buy: null,
       auction: null, queue: [], offer: null, offers: [], nextOfferId: 1, rounds: 0, winner: null, bank: { houses: 32, hotels: 12 }, mem: {}, turns: 0,
       props: {}, decks: {}, sp: null, rules, passes: [], loans: [], credit: null, sponsor: false, blitz: false, travel: false, fresh: false, news: null,
       players: players.map((p, i) => ({ i, name: p.name, token: p.token, char: p.char, color: p.color, bot: !!p.bot, cash: 750, pos: 0, jail: false, tries: 0, cards: [], ...(V2 ? { items: [], activeItems: {} } : {}), out: false, contracts: [], dealt: 0, swap: false, stats: {} })),
@@ -89,9 +89,8 @@
   const puxCount = (st, i) => ownedBy(st, i).filter(s => st.props[s].x).length;
   const fee = s => Math.ceil(mortgageValue(s) / 10);
   // patrocínio: um só na mesa. Vale até outra pessoa cair na casa e roubá-lo; quem cai de novo sobe de +50% para o dobro
-  // A edição original mantém o teto; no 2.0 o limite é o saldo disponível.
-  const CASINO = { min: 5, cap: V2 ? null : 50, color: 2, black: 2, number: 30, ...(V2 ? { green: 40 } : {}), red: D.ROULETTE_RED };
-  const maxBet = (st, i) => V2 ? discounted(st.players[i].cash) : Math.min(CASINO.cap, st.players[i].cash);
+  const CASINO = { min: 5, cap: V2 ? 150 : 50, color: 2, black: 2, number: 30, ...(V2 ? { green: 40 } : {}), red: D.ROULETTE_RED };
+  const maxBet = (st, i) => Math.min(CASINO.cap, V2 ? discounted(st.players[i].cash) : st.players[i].cash);
   const AUCTION_MS = 20000, AUCTION_BUMP_MS = 10000;
   const LEVELS = ['Terreno', 'Casa', 'Sobrado', 'Mansão', 'Prédio', 'Hotel'], LEVEL_ART = ['', 'uma casa', 'um sobrado', 'uma mansão', 'um prédio', 'um hotel'];
   // números da partida para a tela final; saves antigos começam a contar de onde estão
@@ -203,7 +202,11 @@
     const earn = passed ? salary(st) : 0;
     if (passed) { p.cash += earn; p.swap = true; if (V2 && on(st, 'shop')) st.shopPass = true; }
     emit(st, 'move', { who: p.i, from, to, steps: n, salary: earn, msg: passed ? `${p.name} passa pelo Marco Zero e recebe ${brl(earn)}` : undefined });
-    if (passed) wealthTax(st, p);
+    if (passed) {
+      wealthTax(st, p);
+      // Resolva a taxa do início antes da chegada, que pode cobrar outro imposto ou aluguel.
+      if (st.pendingTaxes?.length) { st.afterTaxLand = { who: p.i, ctx }; return; }
+    }
     land(st, p, ctx);
   }
   // só com 3 ou mais na mesa: em dupla, a taxa só alongaria a partida
@@ -213,7 +216,7 @@
     const avg = live.reduce((t, o) => t + worth(st, o.i), 0) / live.length, me = worth(st, p.i);
     if (me <= avg * WEALTH.above) return;
     const tax = Math.min(WEALTH.max, p.cash, Math.round((me - avg) * WEALTH.rate));
-    if (tax > 0) pay(st, p.i, null, tax, 'taxa de fortuna');
+    if (tax > 0) billTax(st, p, tax, 'taxa de fortuna');
   }
   const walkTo = (st, p, to, ctx) => walk(st, p, ((to - p.pos + SIZE) % SIZE) || SIZE, ctx);
   function sendToJail(st, p, why) {
@@ -232,7 +235,7 @@
       if (pass) { pass.n--; p.stats.passe = true; st.passes = st.passes.filter(x => x.n > 0); emit(st, 'passused', { who: p.i, owner: pr.owner, sq: s, left: pass.n, msg: `${p.name} usou um passe livre em ${q.name}` }); } else { if (q.k === 'util') { const a = die(st), b = die(st); emit(st, 'dice', { a, b, who: p.i, extra: true, why: `${p.name} caiu na usina e joga os dados para saber a conta` }); ctx.total = a + b; } const rent = rentOf(st, s, ctx); if (V2 && !p.activeItems.rent && p.items.some(c => itemDef(c.id).kind === 'rent')) st.pendingRent = { who: p.i, owner: pr.owner, sq: s, amount: rent }; else chargeRent(st, { who: p.i, owner: pr.owner, sq: s, amount: rent }); }
     } else if (q.k === 'shop' && on(st, 'shop')) {
       st.shop = true; emit(st, 'shopLand', { who: p.i, msg: `${p.name} chegou à Lojinha` });
-    } else if (q.k === 'tax') pay(st, p.i, null, taxOf(st, q, p), q.name);
+    } else if (q.k === 'tax') billTax(st, p, taxOf(st, q, p), q.name);
     else if (q.k === 'free' && on(st, 'sponsor')) {
       const can = ownedBy(st, p.i).some(x => !st.props[x].m);
       emit(st, 'sponsorLand', { who: p.i, can, from: st.sp && st.sp.who !== p.i ? st.sp.who : null, msg: `${p.name} chegou ao Patrocinador` });
@@ -265,6 +268,19 @@
     }
   }
 
+  function chargeTax(st, bill) {
+    const p = st.players[bill.who], card = p.activeItems?.tax;
+    if (card) {
+      delete p.activeItems.tax;
+      emit(st, 'note', { msg: `${p.name} usou ${card.name} e não pagou ${brl(bill.amount)} de ${bill.why}` });
+    } else pay(st, bill.who, null, Math.min(p.cash, bill.amount), bill.why);
+  }
+  function billTax(st, p, amount, why) {
+    if (amount <= 0) return;
+    const bill = { who: p.i, amount, why };
+    if (V2 && !p.activeItems.tax && p.items.some(c => itemDef(c.id).kind === 'tax')) (st.pendingTaxes ||= []).push(bill);
+    else chargeTax(st, bill);
+  }
   function chargeRent(st, bill) {
     const p = st.players[bill.who], discount = p.activeItems?.rent;
     const rent = discounted(bill.amount, discount?.factor ?? 1);
@@ -284,26 +300,32 @@
   function useItem(st, i, a) {
     const p = st.players[i], at = p.items?.findIndex(c => c.uid === a.uid) ?? -1;
     if (!V2 || at < 0) return 'Você não tem essa carta da Lojinha';
-    if (!['roll', 'post', 'buy', 'casino', 'shop', 'rent'].includes(st.phase)) return 'Resolva a decisão atual antes de usar uma carta';
+    if (!['roll', 'post', 'buy', 'casino', 'shop', 'rent', 'tax'].includes(st.phase)) return 'Resolva a decisão atual antes de usar uma carta';
     const c = itemDef(p.items[at].id), kind = c.kind;
     if (kind === 'permit') return 'O alvará é usado automaticamente ao construir em Balneário Camboriú';
     if (p.jail && kind !== 'jail') return 'Saia da Delegacia antes de usar essa carta';
     if (kind === 'jail' && (!p.jail || st.phase !== 'roll')) return 'Use esta carta na Delegacia antes de lançar';
     if (st.phase === 'rent' && kind !== 'rent') return 'Pague o aluguel ou use uma carta de aluguel';
-    if (kind === 'move' && !['roll', 'post'].includes(st.phase)) return 'Viaje antes de lançar ou ao encerrar sua vez';
+    if (st.phase === 'tax' && kind !== 'tax') return 'Pague o imposto ou use a carta de sonegação';
+    if (kind === 'move' && !['roll', 'post'].includes(st.phase)) return 'Mova antes de lançar ou ao encerrar sua vez';
     if (p.activeItems[kind]) return 'Já existe uma carta desse tipo ativada';
+    if (kind === 'freeplot' && (!Number.isInteger(a.sq) || SQ[a.sq]?.k !== 'prop' || st.props[a.sq]?.owner !== null)) return 'Escolha um terreno sem dono';
     p.items.splice(at, 1);
     emit(st, 'itemUsed', { who: i, id: c.id, msg: `${p.name} usou ${c.name}` });
-    if (['rent', 'buy', 'build', 'casino'].includes(kind)) {
-      p.activeItems[kind] = { id: c.id, name: c.name, factor: c.factor };
+    if (['rent', 'buy', 'build', 'casino', 'tax'].includes(kind)) {
+      p.activeItems[kind] = { id: c.id, name: c.name, factor: c.factor, ...(c.uses ? { remaining: c.uses } : {}) };
       if (kind === 'rent' && st.pendingRent) { chargeRent(st, st.pendingRent); settle(st); }
-    } else if (kind === 'freeplot') { const free = OWNABLE.filter(s => SQ[s].k === 'prop' && st.props[s].owner === null).sort((a,b) => SQ[a].price - SQ[b].price)[0]; if (free === undefined) gain(st, i, 50, c.name); else { st.props[free].owner = i; emit(st, 'bought', { who: i, sq: free, amt: 0, msg: `${p.name} ganhou ${SQ[free].name}` }); } }
-    else if (kind === 'fine') { pay(st, i, null, c.amount, c.name); settle(st); }
+      if (kind === 'tax' && st.pendingTaxes?.length) { chargeTax(st, st.pendingTaxes.shift()); settle(st); }
+    } else if (kind === 'freeplot') {
+      st.props[a.sq].owner = i; tally(p, 'bought');
+      emit(st, 'bought', { who: i, sq: a.sq, amt: 0, msg: `${p.name} ganhou ${SQ[a.sq].name}` }); syncPux(st, a.sq);
+      if (st.buy === a.sq) { st.buy = null; settle(st); }
+    }
     else if (kind === 'cash') gain(st, i, c.amount, c.name);
     else if (kind === 'jail') { p.jail = false; p.tries = 0; emit(st, 'free', { who: i, msg: `${p.name} usou um alvará de soltura` }); }
     else if (kind === 'move') {
-      // Viajar antes do lançamento substitui o lançamento; evita repetir a ação ao retornar de uma compra.
-      st.again = false; st.doubles = 0; teleport(st, p, c.target, c.salary); settle(st);
+      // A carta substitui o lançamento; voltar pelo início não paga salário.
+      st.again = false; st.doubles = 0; walk(st, p, c.steps); settle(st);
     }
     return null;
   }
@@ -317,6 +339,8 @@
     if (st.debts.length) { st.phase = 'debt'; return; }
     if (st.queue.length && !st.auction) { startAuction(st, st.queue.shift()); return; }
     if (st.after) { const a = st.after; st.after = null; walk(st, st.players[st.turn], a.n); settle(st); return; }
+    if (st.pendingTaxes?.length) { st.phase = 'tax'; return; }
+    if (st.afterTaxLand) { const a = st.afterTaxLand; st.afterTaxLand = null; land(st, st.players[a.who], a.ctx); settle(st); return; }
     if (st.pendingRent) { st.phase = 'rent'; return; }
     if (st.buy !== null) { st.phase = 'buy'; return; }
     const cur = st.players[st.turn];
@@ -337,7 +361,7 @@
     for (const q of alive(st)) { const t = tally(q, 'peak', 0); t.peak = Math.max(t.peak, worth(st, q.i)); }
     // a proposta vale até o fim da vez seguinte à que ela foi feita
     st.offers = offersOf(st).filter(o => { if (st.turns - (o.turns ?? st.turns) < 1) return true; emit(st, 'tradeNo', { a: o.from, b: o.to, msg: `A proposta de ${name(st, o.from)} a ${name(st, o.to)} expirou` }); return false; }); st.offer = V2 ? null : st.offers[0] || null;
-    st.turn = n; st.doubles = 0; st.again = false; st.phase = 'roll'; st.turns++; st.fresh = false; st.shop = false; st.pendingRent = null; st.sponsor = false; st.casino = false; st.blitz = false; st.travel = false;
+    st.turn = n; st.doubles = 0; st.again = false; st.phase = 'roll'; st.turns++; st.fresh = false; st.shop = false; st.shopPass = false; st.pendingRent = null; st.pendingTaxes = []; st.sponsor = false; st.casino = false; st.blitz = false; st.travel = false;
     // o lugar mudou de dono: o patrocínio acaba
     if (st.sp && !sponsored(st, st.sp.sq)) { const sq = st.sp.sq; st.sp = null; emit(st, 'sponsorEnd', { sq, msg: `${SQ[sq].name} perdeu o patrocínio` }); }
     if (wrapped) { newRound(st); if (st.phase === 'over') return; }
@@ -458,7 +482,7 @@
     st.debts = st.debts.filter(d => d.who !== i).map(d => (d.to === i ? { ...d, to: null } : d));
     st.offers = offersOf(st).filter(o => o.from !== i && o.to !== i); st.offer = null;
     if (st.pendingRent?.owner === i) st.pendingRent = null;
-    if (st.turn === i) { st.shop = false; st.pendingRent = null; st.after = null; st.sponsor = false; st.casino = false; st.blitz = false; st.travel = false; }
+    if (st.turn === i) { st.shop = false; st.shopPass = false; st.pendingRent = null; st.pendingTaxes = []; st.afterTaxLand = null; st.after = null; st.sponsor = false; st.casino = false; st.blitz = false; st.travel = false; }
     if (st.turn === i) st.buy = null;
     emit(st, 'bankrupt', { who: i, to, paid, props: mine, kicked, msg: kicked ? `${p.name} foi expulso da mesa por votação. Tudo o que era dele voltou para o banco` : `${p.name} faliu${to !== null ? `: ${name(st, to)} recebe ${brl(paid)} e o resto vai para o banco` : ''}` });
     const left = alive(st);
@@ -558,7 +582,7 @@
     switch (a.type) {
       case 'useitem': return useItem(st, i, a);
       case 'shopspin': {
-        if (!V2 || st.phase !== 'shop' || !st.shop) return 'Só dá para girar ao cair na Lojinha';
+        if (!V2 || st.phase !== 'shop' || !st.shop) return 'Só dá para girar depois de passar pelo Marco Zero';
         if (p.cash < SHOP_COST) return 'Você precisa de R$ 25.000 para girar';
         const chance = rand(st) * 100; let cumulative = 0; const rarity = Object.keys(D.RARITIES).find(k => (cumulative += D.RARITIES[k].chance) > chance); const pool = ITEMS.filter(c => c.rarity === rarity);
         const id = pool[Math.floor(rand(st) * pool.length)].id, item = { uid: st.nextItemId++, id };
@@ -571,6 +595,9 @@
       case 'payrent':
         if (!V2 || st.phase !== 'rent' || !st.pendingRent) return 'Agora não';
         chargeRent(st, st.pendingRent); settle(st); return null;
+      case 'paytax':
+        if (!V2 || st.phase !== 'tax' || !st.pendingTaxes?.length) return 'Agora não';
+        chargeTax(st, st.pendingTaxes.shift()); settle(st); return null;
       case 'roll': {
         if (st.phase !== 'roll') return 'Agora não dá para lançar';
         const d1 = die(st), d2 = die(st), dbl = d1 === d2, n = d1 + d2;
@@ -701,11 +728,15 @@
     if (SQ[s].price < short) return 'A garantia precisa valer mais que a dívida';
     return null;
   }
+  function consumeBuildItem(p) {
+    const card = p.activeItems?.build;
+    if (card && (!card.remaining || --card.remaining <= 0)) delete p.activeItems.build;
+  }
   function manage(st, i, a) {
     const p = st.players[i], s = a.sq, q = SQ[s];
     if (a.type === 'pux') {
       const err = canPux(st, i, s); if (err) return err;
-      const cost = buildCost(st, s); if (p.activeItems?.build) delete p.activeItems.build; p.cash -= cost; st.props[s].x = true;
+      const cost = buildCost(st, s); consumeBuildItem(p); p.cash -= cost; st.props[s].x = true;
       emit(st, 'pux', { who: i, sq: s, on: true, amt: cost, msg: `${p.name} levantou um puxadinho em ${q.name}` });
     } else if (a.type === 'repay') {
       const l = loanOf(st, i); if (!l) return 'Você não tem fiado aberto';
@@ -718,7 +749,7 @@
       emit(st, 'note', { msg: `${p.name} trocou um contrato` });
     } else if (a.type === 'build') {
       const err = canBuild(st, i, s); if (err) return err;
-      const pr = st.props[s], cost = buildCost(st, s); if (p.activeItems?.build) delete p.activeItems.build; p.cash -= cost; tally(p, 'built');
+      const pr = st.props[s], cost = buildCost(st, s); consumeBuildItem(p); p.cash -= cost; tally(p, 'built');
       if (V2 && q.name === 'Balneário Camboriú') p.items.splice(p.items.findIndex(c => c.id === 'bcpermit'), 1);
       if (pr.h === 4) { st.bank.hotels--; st.bank.houses += 4; pr.h = 5; } else { st.bank.houses--; pr.h++; }
       emit(st, 'build', { who: i, sq: s, h: pr.h, amt: cost, msg: `${p.name} construiu ${LEVEL_ART[pr.h]} em ${q.name}` });
@@ -862,6 +893,7 @@
       return { type: 'decline' };
     }
     if (V2 && st.phase === 'rent') { const c = p.items.filter(c => itemDef(c.id).kind === 'rent').sort((a,b) => itemDef(a.id).factor - itemDef(b.id).factor)[0]; return c ? { type: 'useitem', uid: c.uid } : { type: 'payrent' }; }
+    if (V2 && st.phase === 'tax') { const c = p.items.find(c => itemDef(c.id).kind === 'tax'); return c && !p.jail ? { type: 'useitem', uid: c.uid } : { type: 'paytax' }; }
     if (V2 && st.phase === 'shop') return { type: p.cash >= 150 ? 'shopspin' : 'shopskip' };
     if (st.phase === 'casino') { const g = 'roleta'; return p.cash >= 500 && st.turns % 3 === 0 ? { type: 'bet', game: g, pick: 'red', amount: Math.min(maxBet(st, i), 25) } : { type: 'nobet' }; }
     if (st.phase === 'sponsor') { const own = ownedBy(st, i).filter(s => !st.props[s].m).sort((a, b) => (rentOf(st, b) || 0) - (rentOf(st, a) || 0)); return own.length ? { type: 'sponsor', sq: own[0] } : { type: 'nosponsor' }; }
@@ -870,7 +902,11 @@
       return { type: p.cash >= bribe(st) * 3 && open > 4 ? 'jeitinho' : 'jailgo' };
     }
     if (st.phase === 'travel') return { type: 'stay' };
-    if (V2 && st.phase === 'roll') { const c = p.items.find(c => p.jail ? itemDef(c.id).kind === 'jail' : ['cash', 'rent', 'build', 'casino'].includes(itemDef(c.id).kind) && !p.activeItems[itemDef(c.id).kind]); if (c) return { type: 'useitem', uid: c.uid }; }
+    if (V2 && st.phase === 'roll') {
+      const free = !p.jail && p.items.find(c => itemDef(c.id).kind === 'freeplot');
+      if (free) { const sq = OWNABLE.filter(s => SQ[s].k === 'prop' && st.props[s].owner === null).sort((a, b) => valueOf(st, i, b, true) - valueOf(st, i, a, true))[0]; if (sq !== undefined) return { type: 'useitem', uid: free.uid, sq }; }
+      const c = p.items.find(c => p.jail ? itemDef(c.id).kind === 'jail' : ['cash', 'rent', 'build', 'casino', 'tax'].includes(itemDef(c.id).kind) && !p.activeItems[itemDef(c.id).kind]); if (c) return { type: 'useitem', uid: c.uid };
+    }
     const m = botManage(st, i);
     if (st.phase === 'roll') {
       if (m) return m;

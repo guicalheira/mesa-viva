@@ -17,17 +17,17 @@ const Patrimonio = (() => {
     ['contracts', 'Contratos secretos', 'Cada um recebe 2 metas ocultas que pagam prêmio ao serem cumpridas.'],
   ];
   if (PD_.edition === 2) {
-    RULE_LIST.splice(RULE_LIST.findIndex(([k]) => k === 'sponsor'), 1, ['shop', 'Lojinha', 'Ao cair ou passar pelo Marco Zero, gire uma vez por R$ 25.000 e ganhe uma carta. Guarde, use ou negocie com os amigos.']);
-    RULE_LIST.find(([k]) => k === 'casino')[2] = 'Sem teto de aposta: até todo o saldo. Vermelho 2×, preto 2×, número 30× e verde 40×.';
+    RULE_LIST.splice(RULE_LIST.findIndex(([k]) => k === 'sponsor') + 1, 0, ['shop', 'Lojinha', 'A cada passagem pelo Marco Zero, gire uma vez por R$ 25.000 e ganhe uma carta. Guarde, use ou negocie com os amigos.']);
+    RULE_LIST.find(([k]) => k === 'casino')[2] = 'Apostas de R$ 5.000 a R$ 150.000, conforme seu saldo. Vermelho 2×, preto 2×, número 30× e verde 40×.';
   }
   const LOG = 40, INTRO_MS = 8000; // abertura com o sorteio da ordem nos dados
   // quanto cada evento leva na tela: o anfitrião espera isso antes de um bot jogar ou o relógio correr
   const DUR = { shopLand: 800, shopSpin: 2800, itemUsed: 700, teleport: 1200, turn: 900, dice: 2300, jail: 2500, free: 500, pay: 900, gain: 700, card: 3200, offerbuy: 500, bought: 1400, auction: 700, declined: 300, bid: 400, passbid: 150, sold: 1500, unsold: 600, build: 900, sellb: 300, mortgage: 350, offered: 300, trade: 800, tradeNo: 300, bankrupt: 2500, pux: 600, blitz: 2500, blitzOk: 800, casinoLand: 800, casinoSpin: 5000, casinoBet: 500, casinoResult: 2500, sponsorLand: 1000, sponsor: 2000, travel: 3000, passused: 900, creditAsk: 300, creditOk: 1100, creditNo: 400, lien: 1100, seized: 1100, reajuste: 1000, news: 2700, contract: 1200, note: 400 };
   const durOf = e => (e.t === 'move' ? 300 + Math.abs(e.steps) * 230 : DUR[e.t] || 0);
-  const BOT_WAIT = { shopspin: 900, shopskip: 500, useitem: 600, payrent: 700, build: 420, lift: 420, mortgage: 420, sell: 420, offer: 700, roll: 750, buy: 1100, decline: 1000, end: 550, accept: 900, reject: 900, bail: 750, usecard: 750, bankrupt: 1000, pux: 420, repay: 500, sponsor: 1000, nosponsor: 500, bet: 1200, nobet: 500, jailgo: 900, jeitinho: 900, travel: 900, stay: 500, fiado: 800, creditYes: 900, creditNo: 900, creditCounter: 900 };
+  const BOT_WAIT = { shopspin: 900, shopskip: 500, useitem: 600, payrent: 700, paytax: 700, build: 420, lift: 420, mortgage: 420, sell: 420, offer: 700, roll: 750, buy: 1100, decline: 1000, end: 550, accept: 900, reject: 900, bail: 750, usecard: 750, bankrupt: 1000, pux: 420, repay: 500, sponsor: 1000, nosponsor: 500, bet: 1200, nobet: 500, jailgo: 900, jeitinho: 900, travel: 900, stay: 500, fiado: 800, creditYes: 900, creditNo: 900, creditCounter: 900 };
   // ausente ou sem tempo: a saída que não gasta nem arrisca nada
-  const SAFE = { shop: 'shopskip', rent: 'payrent', casino: 'nobet', sponsor: 'nosponsor', blitz: 'jailgo', travel: 'stay', buy: 'decline', roll: 'roll', post: 'end' };
-  const LAST_RESORT = { shop: 'shopskip', rent: 'payrent', casino: 'nobet', sponsor: 'nosponsor', blitz: 'jailgo', travel: 'stay', debt: 'bankrupt', auction: 'pass', buy: 'decline', roll: 'roll' };
+  const SAFE = { shop: 'shopskip', rent: 'payrent', tax: 'paytax', casino: 'nobet', sponsor: 'nosponsor', blitz: 'jailgo', travel: 'stay', buy: 'decline', roll: 'roll', post: 'end' };
+  const LAST_RESORT = { shop: 'shopskip', rent: 'payrent', tax: 'paytax', casino: 'nobet', sponsor: 'nosponsor', blitz: 'jailgo', travel: 'stay', debt: 'bankrupt', auction: 'pass', buy: 'decline', roll: 'roll' };
   const idx = (st, id) => st.players.findIndex(p => p.id === id);
 
   // depois de qualquer mudança: publica os eventos e acerta os relógios
