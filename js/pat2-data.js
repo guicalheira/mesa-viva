@@ -13,7 +13,6 @@
   base.SQ.forEach((original, legacyIndex) => {
     if (legacyIndex === 4 || legacyIndex === 36) return; // imposto e Sorte mudam de lugar
     const q = { ...copy(original), legacyIndex };
-    if (q.k === 'free') Object.assign(q, { k: 'shop', name: 'Lojinha', place: 'Gire por R$ 25.000', art: 'lojinha' });
     SQ.push(q);
     if (legacyIndex === 5) SQ.push(
       prop('sul', 'Porto Alegre', 'Orla do Guaíba, RS', 'santos', 50, [4, 19, 50, 115, 170, 200], 25),
@@ -26,7 +25,7 @@
       prop('portugal', 'Jurerê Internacional', 'Florianópolis, SC', 'recife', 125, [13, 62, 152, 325, 380, 440], 90));
     if (legacyIndex === 29) SQ.push(
       prop('unico', 'Balneário Camboriú', 'Barra Sul, SC', 'paulista', 220, [26, 130, 340, 590, 700, 820], 190),
-      { k: 'casino', g: 'neutro', name: 'Cassino Royale', place: 'Sem teto de aposta', art: 'cassino' },
+      { k: 'casino', g: 'neutro', name: 'Cassino Royale', place: 'Aposte até R$ 150.000', art: 'cassino' },
       { k: 'mutirao', g: 'neutro', name: 'Imprevisto', art: 'imprevisto' });
     if (legacyIndex === 39) SQ.push(
       prop('mundo', 'Búzios', 'Armação dos Búzios, RJ', 'santos', 320, [50, 190, 490, 860, 1000, 1150], 270),
@@ -38,7 +37,6 @@
   const CARDS = copy(base.CARDS);
   for (const deck of Object.values(CARDS)) {
     deck.forEach(c => { if (c.e.goto !== undefined) c.e.goto = oldToNew(c.e.goto); });
-    deck.push({ t: 'Oferta relâmpago! Vá direto para a Lojinha. Não receba ao passar pelo Marco Zero.', e: { teleport: SQ.findIndex(q => q.k === 'shop') } });
   }
   // Instâncias recebem um uid na partida: duas cartas iguais continuam negociáveis separadamente.
   const ITEMS = [
@@ -49,23 +47,25 @@
     { id: 'buy50', name: 'Negócio da China', text: 'Desconto de 50% na próxima compra de terreno sem dono, fora de leilão.', kind: 'buy', factor: .5 },
     { id: 'build50', name: 'Mutirão de obra', text: 'A próxima construção custa 50% a menos. Ainda precisa cumprir as regras do grupo.', kind: 'build', factor: .5 },
     { id: 'casino3', name: 'Cassino 3×', text: 'Triplique o prêmio da próxima aposta vencedora. A carta é consumida na aposta, mesmo se perder.', kind: 'casino', factor: 3 },
-    { id: 'zero', name: 'De volta ao começo', text: 'Vá direto ao Marco Zero e receba R$ 130.000.', kind: 'move', target: 0, salary: true },
-    { id: 'shop', name: 'Cliente VIP', text: 'Vá direto à Lojinha e tenha uma nova oportunidade de girar por R$ 25.000. Sem salário.', kind: 'move', target: SQ.findIndex(q => q.k === 'shop') },
-    { id: 'rio', name: 'Partiu Copacabana', text: 'Vá direto ao Rio de Janeiro. Compra e aluguel valem normalmente. Sem salário.', kind: 'move', target: oldToNew(39) },
-    { id: 'sp', name: 'Conexão Paulista', text: 'Vá direto a São Paulo. Compra e aluguel valem normalmente. Sem salário.', kind: 'move', target: oldToNew(29) },
-    { id: 'miami', name: 'Viagem para Búzios', text: 'Vá direto a Búzios. Compra e aluguel valem normalmente. Sem salário.', kind: 'move', target: SQ.findIndex(q => q.name === 'Búzios') },
+    // Os ids antigos preservam a identidade das cartas já guardadas nas partidas.
+    { id: 'zero', name: 'Volte 3 casas', text: 'Volte 3 casas e resolva a casa de chegada. Voltar pelo Marco Zero não paga salário.', kind: 'move', steps: -3 },
+    { id: 'shop', name: 'Avance 2 casas', text: 'Avance 2 casas e resolva a casa de chegada. Receba salário se cruzar o Marco Zero.', kind: 'move', steps: 2 },
+    { id: 'rio', name: 'Avance 3 casas', text: 'Avance 3 casas e resolva a casa de chegada. Receba salário se cruzar o Marco Zero.', kind: 'move', steps: 3 },
+    { id: 'sp', name: 'Volte 2 casas', text: 'Volte 2 casas e resolva a casa de chegada. Voltar pelo Marco Zero não paga salário.', kind: 'move', steps: -2 },
+    { id: 'miami', name: 'Avance 5 casas', text: 'Avance 5 casas e resolva a casa de chegada. Receba salário se cruzar o Marco Zero.', kind: 'move', steps: 5 },
     { id: 'jailfree', name: 'Alvará de soltura', text: 'Saia da Delegacia de graça antes de lançar os dados.', kind: 'jail' },
     { id: 'cash50', name: 'Fundo de reserva', text: 'Receba R$ 50.000 do banco.', kind: 'cash', amount: 50 },
     { id: 'cash10', name: 'Troco de bolso', text: 'Receba R$ 10.000 do banco.', kind: 'cash', amount: 10 },
     { id: 'cash150', name: 'Bônus de investimento', text: 'Receba R$ 150.000 do banco.', kind: 'cash', amount: 150 },
-    { id: 'cash200', name: 'Grande prêmio', text: 'Receba R$ 200.000 do banco.', kind: 'cash', amount: 200 },
-    { id: 'freeplot', name: 'Terreno de presente', text: 'Ganhe o terreno sem dono mais barato do tabuleiro. Se não houver, receba R$ 50.000.', kind: 'freeplot' },
+    { id: 'cash200', name: 'Grande prêmio', text: 'Receba R$ 500.000 do banco.', kind: 'cash', amount: 500 },
+    { id: 'freeplot', name: 'Terreno à escolha', text: 'Escolha qualquer terreno sem dono e receba de graça. Não inclui aeroportos e usinas.', kind: 'freeplot' },
+    { id: 'buildfree', name: 'Duas obras por conta', text: 'As próximas duas construções são grátis, incluindo puxadinhos. Valem as regras do grupo, materiais e alvarás.', kind: 'build', factor: 0, uses: 2 },
     { id: 'bcpermit', name: 'Alvará de Balneário', text: 'Permite uma construção em Balneário Camboriú. É consumido na obra.', kind: 'permit' },
     { id: 'cash5', name: 'Prêmio de consolação', text: 'Receba R$ 5.000 do banco.', kind: 'cash', amount: 5 },
-    { id: 'fine50', name: 'Reparo inesperado', text: 'Pague R$ 50.000 ao banco.', kind: 'fine', amount: 50 },
+    { id: 'taxfree', name: 'Sonegar imposto', text: 'Não pague o próximo imposto, incluindo a taxa de fortuna. Use na cobrança ou ative antes.', kind: 'tax' },
   ];
   const RARITIES = { comum: { name: 'Comum', color: '#6384a0', chance: 55 }, raro: { name: 'Rara', color: '#3b7ee8', chance: 28 }, epico: { name: 'Épica', color: '#a458d6', chance: 13 }, lendario: { name: 'Lendária', color: '#e6a833', chance: 4 } };
-  const rarity = { rent50:'raro', rentfree:'epico', buy50:'raro', build50:'raro', casino3:'epico', zero:'epico', rio:'raro', sp:'raro', miami:'raro', cash150:'epico', cash200:'lendario', freeplot:'lendario', bcpermit:'lendario', fine50:'comum' };
+  const rarity = { rent50:'raro', rentfree:'epico', taxfree:'epico', buy50:'raro', build50:'raro', casino3:'epico', zero:'epico', rio:'raro', sp:'raro', miami:'raro', cash150:'epico', cash200:'lendario', freeplot:'lendario', buildfree:'lendario', bcpermit:'raro' };
   ITEMS.forEach(c => { c.rarity = rarity[c.id] || 'comum'; c.art = `img/cards/${c.id}.svg`; });
   const data = { ...base, GROUPS, SQ, CARDS, ITEMS, RARITIES, edition: 2, title: 'Patrimônio 2.0', side: 13 };
   if (typeof module !== 'undefined') module.exports = data; else root.PD2 = data;

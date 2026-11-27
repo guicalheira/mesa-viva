@@ -544,12 +544,12 @@
     removeAuction();
     const who = Engine.actor(st), p = st.players[who], bar = $('#bar');
     // o que está na tela só é refeito se a decisão mudou: uma obra de outro jogador não apaga a aposta que você monta
-    const key = who !== ME ? `w:${who}` : JSON.stringify([st.phase, st.turn, st.buy, st.doubles, st.again, p.cash, p.jail, p.tries, p.cards.length, p.items, p.activeItems, st.pendingRent, p.contracts.length, st.debts?.[0], st.credit]);
+    const key = who !== ME ? `w:${who}` : JSON.stringify([st.phase, st.turn, st.buy, st.doubles, st.again, p.cash, p.jail, p.tries, p.cards.length, p.items, p.activeItems, st.pendingRent, st.pendingTaxes, p.contracts.length, st.debts?.[0], st.credit]);
     if (key === ctlKey) return;
     closeSheetDecide(); clearBar(); ctlKey = key;
     if (who !== ME) { myPhase = null; if (ME < 0) bar.append(hintEl('Você está assistindo')); return; }
     // chegou a hora de decidir: uma janela que ficou aberta não pode esconder a carta ou o cassino
-    if (st.phase !== myPhase && (st.phase === 'buy' || st.phase === 'casino' || st.phase === 'shop' || st.phase === 'rent')) closeLoose();
+    if (st.phase !== myPhase && ['buy', 'casino', 'shop', 'rent', 'tax'].includes(st.phase)) closeLoose();
     myPhase = st.phase;
     Stage.setSpeed(base);
     if (st.credit) return showCredit();
@@ -571,13 +571,21 @@
       return;
     }
     if (st.phase === 'shop') {
-      bar.append(hintEl('Lojinha: uma rodada por visita. Todas as cartas podem ser guardadas e negociadas.'), btn('Girar por ' + brl(Engine.SHOP_COST), () => act(who, { type: 'shopspin' }), 'pri', true), btn('Ver cartas da roleta', shopCatalog), btn('Passar', () => act(who, { type: 'shopskip' })));
+      bar.append(hintEl('Passou pelo Marco Zero! Você pode girar a Lojinha uma vez. Guarde, use ou negocie a carta.'), btn('Girar por ' + brl(Engine.SHOP_COST), () => act(who, { type: 'shopspin' }), 'pri', true), btn('Ver cartas da roleta', shopCatalog), btn('Passar', () => act(who, { type: 'shopskip' })));
       bar.querySelector('[data-primary]').disabled = p.cash < Engine.SHOP_COST; return;
     }
     if (st.phase === 'rent') {
       const bill = st.pendingRent; bar.append(hintEl(`Aluguel de ${esc(SQ[bill.sq].name)}: ${brl(bill.amount)}. Escolha uma carta ou pague o valor integral.`));
       p.items.filter(c => Engine.itemDef(c.id).kind === 'rent').forEach(c => { const def = Engine.itemDef(c.id); bar.append(btn(`${def.name}: pagar ${brl(Engine.discounted(bill.amount, def.factor))}`, () => act(who, { type: 'useitem', uid: c.uid }))); });
       bar.append(btn('Pagar ' + brl(bill.amount), () => act(who, { type: 'payrent' }), 'pri', true)); return;
+    }
+    if (st.phase === 'tax') {
+      const bill = st.pendingTaxes[0]; bar.append(hintEl(`${bill.why}: ${brl(bill.amount)}. Use a carta de sonegação ou pague o imposto.`));
+      p.items.filter(c => Engine.itemDef(c.id).kind === 'tax').forEach(c => {
+        const a = { type: 'useitem', uid: c.uid }, b = btn('Sonegar imposto', () => act(who, a));
+        const err = tryAct(who, a); if (err) { b.disabled = true; b.title = err; } bar.append(b);
+      });
+      bar.append(btn('Pagar ' + brl(bill.amount), () => act(who, { type: 'paytax' }), 'pri', true)); return;
     }
     if (st.phase === 'casino') {
       const top = Engine.maxBet(st, who), T = Engine.CASINO, box = document.createElement('div'); box.className = 'cas';
@@ -606,7 +614,7 @@
       };
       go = btn('Apostar', () => act(who, { type: 'bet', game, pick, amount: amt }), 'pri', true); draw();
       const pop = document.createElement('div'), foot = document.createElement('div'); pop.id = 'casino'; foot.className = 'cas-go';
-      pop.innerHTML = `<header><small>Cassino</small><h2>Roleta: faça sua aposta</h2><em>${V2 ? 'Sem teto: até todo o seu saldo de ' : 'Até '}${brl(top)}${p.activeItems?.casino ? ' · carta Cassino 3× ativada' : ''}</em></header>`; foot.append(go, btn('Passar', () => act(who, { type: 'nobet' }))); pop.append(eyeBtn(), box, foot); $('#hud').append(pop); paintAmt();
+      pop.innerHTML = `<header><small>Cassino</small><h2>Roleta: faça sua aposta</h2><em>Até ${brl(top)}${V2 ? ' · teto de R$ 150.000 por aposta' : ''}${p.activeItems?.casino ? ' · carta Cassino 3× ativada' : ''}</em></header>`; foot.append(go, btn('Passar', () => act(who, { type: 'nobet' }))); pop.append(eyeBtn(), box, foot); $('#hud').append(pop); paintAmt();
       return;
     }
     if (st.phase === 'sponsor') {
@@ -738,11 +746,16 @@
   }
   const itemHTML = c => `<article class="shop-item" style="--rarity:${PD.RARITIES[c.rarity].color}"><img src="${c.art}" alt=""><small>${PD.RARITIES[c.rarity].name}</small><h3>${esc(c.name)}</h3><p>${esc(c.text)}</p></article>`;
   function shopCatalog() {
-    sheet(`<button class="close" data-x>✕</button><h2>Roleta da Lojinha</h2><p class="sub">Uma rodada por visita custa ${brl(Engine.SHOP_COST)}. Raridades: ${Object.values(PD.RARITIES).map(r => `${r.name} ${r.chance}%`).join(' · ')}. Dentro de cada raridade, as cartas têm chances iguais. Cada carta vale uma utilização. Você pode acumular e negociar quantas quiser.</p><div class="shop-grid">${Engine.ITEMS.map(itemHTML).join('')}</div>`).firstElementChild.classList.add('wide');
+    sheet(`<button class="close" data-x>✕</button><h2>Roleta da Lojinha</h2><p class="sub">A cada passagem pelo Marco Zero, uma rodada custa ${brl(Engine.SHOP_COST)}. Raridades: ${Object.values(PD.RARITIES).map(r => `${r.name} ${r.chance}%`).join(' · ')}. Dentro de cada raridade, as cartas têm chances iguais. Você pode acumular e negociar quantas quiser. A casa do Patrocinador aumenta o aluguel de uma propriedade sua.</p><div class="shop-grid">${Engine.ITEMS.map(itemHTML).join('')}</div>`).firstElementChild.classList.add('wide');
+  }
+  function freePlotBox(i, uid) {
+    const list = Engine.OWNABLE.filter(s => SQ[s].k === 'prop' && st.props[s].owner === null);
+    sheet(`<button class="close" data-x>✕</button><h2>Escolha seu terreno grátis</h2><p class="sub">Escolha qualquer terreno sem dono. A carta será consumida quando você confirmar a escolha.</p><div class="pc-grid">${list.map(s => pcard(s, { price: true })).join('') || '<p class="empty">Não há terrenos sem dono. Guarde a carta para depois.</p>'}</div>`, box => box.querySelectorAll('[data-s]').forEach(b => { b.onclick = () => { if (act(i, { type: 'useitem', uid, sq: +b.dataset.s })) closeSheet(); }; })).firstElementChild.classList.add('wide');
   }
   function itemsBox(i) {
     const p = st.players[i], active = Object.values(p.activeItems || {});
-    sheet(`<button class="close" data-x>✕</button><h2>Minhas cartas</h2>${whoCard(p, `${p.items.length} cartas da Lojinha`)}<p class="sub">Use na sua vez ou escolha as cartas na tela Negociar. Descontos ativados ficam guardados até serem usados; um de cada tipo por vez. Viagens substituem o lançamento e não pagam salário, exceto a carta Marco Zero.</p>${active.length ? `<div class="items-active"><b>Cartas ativadas</b>${active.map(c => `<span>${esc(c.name)}</span>`).join('')}</div>` : ''}<div class="shop-grid">${p.items.map(c => { const def = Engine.itemDef(c.id), err = tryAct(i, { type: 'useitem', uid: c.uid }); return `<div>${itemHTML(def)}<button class="btn ${err ? '' : 'pri'}" data-use-item="${c.uid}" ${err ? `disabled title="${esc(err)}"` : ''}>Usar carta</button>${err ? `<small class="item-why">${esc(err)}</small>` : ''}</div>`; }).join('') || '<p class="empty">Caia na Lojinha ou negocie com outro jogador para conseguir cartas.</p>'}</div>`, box => box.querySelectorAll('[data-use-item]').forEach(b => { b.onclick = () => { if (act(i, { type: 'useitem', uid: +b.dataset.useItem })) closeSheet(); }; })).firstElementChild.classList.add('wide');
+    const free = Engine.OWNABLE.find(s => SQ[s].k === 'prop' && st.props[s].owner === null);
+    sheet(`<button class="close" data-x>✕</button><h2>Minhas cartas</h2>${whoCard(p, `${p.items.length} cartas da Lojinha`)}<p class="sub">Use na sua vez ou escolha as cartas na tela Negociar. Efeitos ativados ficam guardados até serem usados; um de cada tipo por vez. Cartas de movimento substituem os dados antes do lançamento ou podem ser usadas ao encerrar a vez. Avançar pelo Marco Zero paga salário; voltar não paga.</p>${active.length ? `<div class="items-active"><b>Cartas ativadas</b>${active.map(c => `<span>${esc(c.name)}${c.remaining ? ` · ${c.remaining} obras restantes` : ''}</span>`).join('')}</div>` : ''}<div class="shop-grid">${p.items.map(c => { const def = Engine.itemDef(c.id), err = tryAct(i, { type: 'useitem', uid: c.uid, ...(def.kind === 'freeplot' ? { sq: free } : {}) }); return `<div>${itemHTML(def)}<button class="btn ${err ? '' : 'pri'}" data-use-item="${c.uid}" ${err ? `disabled title="${esc(err)}"` : ''}>${def.kind === 'freeplot' ? 'Escolher terreno' : 'Usar carta'}</button>${err ? `<small class="item-why">${esc(err)}${def.kind === 'freeplot' && free === undefined ? ': não há terrenos disponíveis' : ''}</small>` : ''}</div>`; }).join('') || '<p class="empty">Passe pelo Marco Zero para girar a Lojinha ou negocie cartas com outro jogador.</p>'}</div>`, box => box.querySelectorAll('[data-use-item]').forEach(b => { b.onclick = () => { const uid = +b.dataset.useItem, def = Engine.itemDef(p.items.find(c => c.uid === uid).id); if (def.kind === 'freeplot') freePlotBox(i, uid); else if (act(i, { type: 'useitem', uid })) closeSheet(); }; })).firstElementChild.classList.add('wide');
   }
   async function shopSpin(e) {
     closeLoose(); const card = Engine.itemDef(e.item.id), index = Engine.ITEMS.findIndex(c => c.id === card.id), n = Engine.ITEMS.length;
